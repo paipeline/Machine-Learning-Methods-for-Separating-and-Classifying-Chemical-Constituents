@@ -1,3 +1,14 @@
+from sklearn.preprocessing import StandardScaler
+import torch
+import wandb
+from torch.utils.data import TensorDataset
+from torch.utils.data import DataLoader
+from models.models import CNNModel,DNNModel, get_rf_model, get_svr_model,UNetModel  # Custom model imports
+from src.utils import plot_metrics, print_metrics  # Utility functions for metrics and plotting
+from sklearn.model_selection import KFold
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import numpy as np
+
 """
 train_evaluate.py
 
@@ -11,19 +22,8 @@ Functions:
 - perform_kfold_cv: Performs k-fold cross-validation for a model
 - train_and_evaluate_all_models: Orchestrates the training and evaluation of all specified models
 """
-from sklearn.preprocessing import StandardScaler
-import torch
-from torch.utils.data import TensorDataset
-from torch.utils.data import DataLoader
-
-from models.models import CNNModel,DNNModel, get_rf_model, get_svr_model,UNetModel  # Custom model imports
-from src.utils import plot_metrics, print_metrics  # Utility functions for metrics and plotting
-from sklearn.model_selection import KFold
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-import numpy as np
-
-def train_pytorch_model(model, train_loader, criterion, optimizer, epochs):
-    """ Trains a PyTorch model over a specified number of epochs. """
+def train_model(model, train_loader, criterion, optimizer, epochs):
+    """ Trains a model over a specified number of epochs. """
     for epoch in range(epochs):
         model.train()
         for batch_idx, (data, target) in enumerate(train_loader):
@@ -32,9 +32,10 @@ def train_pytorch_model(model, train_loader, criterion, optimizer, epochs):
             loss = criterion(output, target)
             loss.backward()
             optimizer.step()
+        wandb.log({"epoch": epoch, "loss": loss.item()})
 
 def evaluate_model(model, test_loader):
-    """ Evaluates a PyTorch model by calculating the mean squared error over a test dataset. """
+    """ Evaluates a model by calculating the mean squared error over a test dataset. """
     model.eval()
     test_loss = 0
     with torch.no_grad():
@@ -46,7 +47,7 @@ def evaluate_model(model, test_loader):
 
 def perform_kfold_cv(X, Y, model, k=5):
     """ 
-    Performs k-fold cross-validation on a PyTorch model and returns the average mean squared error.
+    Performs k-fold cross-validation on a model and returns the average mean squared error.
     """
     kf = KFold(n_splits=k, shuffle=True, random_state=30)
     mses = []  # Store mean squared error for each fold
@@ -55,7 +56,7 @@ def perform_kfold_cv(X, Y, model, k=5):
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = Y[train_index], Y[test_index]
 
-        # Create PyTorch dataloaders for training and testing
+        # Create dataloaders for training and testing
         train_dataset = torch.utils.data.TensorDataset(torch.Tensor(X_train), torch.Tensor(y_train))
         test_dataset = torch.utils.data.TensorDataset(torch.Tensor(X_test), torch.Tensor(y_test))
         train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=3, shuffle=True)
@@ -66,8 +67,8 @@ def perform_kfold_cv(X, Y, model, k=5):
         criterion = torch.nn.MSELoss()
 
         # Train and evaluate the model
-        train_pytorch_model(model, train_loader, criterion, optimizer, epochs=15)
-        mse = evaluate_pytorch_model(model, test_loader)
+        train_model(model, train_loader, criterion, optimizer, epochs=15)
+        mse = evaluate_model(model, test_loader)
         mses.append(mse)
         # Further metrics like MAE, R2 can be calculated and appended here
 
@@ -83,10 +84,10 @@ Trains and evaluates multiple machine learning models, including both PyTorch-ba
 The function employs k-fold cross-validation to assess the performance of each model.
 
 Parameters:
-- train_X: Training data features (numpy array or PyTorch tensor)
-- train_Y: Training data labels or targets (numpy array or PyTorch tensor)
-- test_X: Testing data features (numpy array or PyTorch tensor)
-- test_Y: Testing data labels or targets (numpy array or PyTorch tensor)
+- train_X: Training data features
+- train_Y: Training data labels or targets
+- test_X: Testing data features
+- test_Y: Testing data labels or targets
 
 The function assumes the input data for PyTorch models (CNN, DNN, U-Net) is in a format compatible
 with PyTorch (e.g., tensors), and for scikit-learn models (RF, SVR), the data is in a format 
@@ -101,6 +102,7 @@ Returns:
 - None: The function prints the average MSE for each model but does not return any values.
 """
 def train_and_evaluate_all_models(train_X, train_Y, test_X, test_Y):
+
     model_metrics = {}
     kf = KFold(n_splits=5, shuffle=True, random_state=30)
     train_X = train_X.reshape(train_X.shape[0], -1)
@@ -112,6 +114,7 @@ def train_and_evaluate_all_models(train_X, train_Y, test_X, test_Y):
 
 
     for model_name, get_model in [('DNN', DNNModel)]:
+        wandb.init(project = "ML methods for demixing PAH",entity = "ppeng24",name = f"Training_{model_name}")
         mses = []
         for train_index, test_index in kf.split(train_X):
             X_train, X_test = train_X[train_index], train_X[test_index]
@@ -126,7 +129,7 @@ def train_and_evaluate_all_models(train_X, train_Y, test_X, test_Y):
             optimizer = torch.optim.Adam(model.parameters())
             criterion = torch.nn.MSELoss()
 
-            train_pytorch_model(model, train_loader, criterion, optimizer, epochs=10)
+            train_model(model, train_loader, criterion, optimizer, epochs=10)
             mse = evaluate_model(model, test_loader)
             mses.append(mse)
 
@@ -135,6 +138,7 @@ def train_and_evaluate_all_models(train_X, train_Y, test_X, test_Y):
 
     # Training and evaluating Random Forest and SVR models
     for model_name, get_model in [('RF', get_rf_model), ('SVR', get_svr_model)]:
+        wandb.init(project = "ML methods for demixing PAH",entity = "ppeng24",name = f"Training_{model_name}")
         mses = []
         for train_index, test_index in kf.split(train_X):
             X_train, X_test = train_X[train_index], train_X[test_index]
