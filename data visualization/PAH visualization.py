@@ -8,11 +8,12 @@ import numpy as np
 from dataPreprocess import process_data
 from repeat import increase_m_and_repeat
 from maxPooling import max_pool
+#TODO except for pesticide
 def visualize_data(data, col_names, sample_num, after_clusters):
     '''
     This function plots each series with its peaks and cluster boundaries
 
-    :param data: data dictionary
+    :param data: Data dictionary
     :param col_names: List of names of the columns to plot
     :param sample_num: Number of samples
     :param after_clusters: dictionary of clusters
@@ -46,7 +47,7 @@ def visualize_data(data, col_names, sample_num, after_clusters):
 
     # set a -- line in y = 0
     plt.plot(data['x'], np.zeros(len(data['x'])), "--", color="black", label="y = 0")
-    plt.title("data Visualization")
+    plt.title("Data Visualization")
     plt.xlabel("Raman Shift (cm-1)")
     plt.ylabel("Intensity")
     plt.legend()
@@ -56,8 +57,8 @@ def visualize_data(data, col_names, sample_num, after_clusters):
 
 # Test
 if __name__ == "__main__":
-    # file_path = "data/SERS 1ANTH+1PYR.xlsx"  # Provide the actual file path
-    file_path = "data\SERS 2BaA+1ANTH.xlsx"
+    # file_path = "Data/SERS 1ANTH+1PYR.xlsx"  # Provide the actual file path
+    file_path = "Data\SERS 2BaA+1ANTH.xlsx"
     m = 30  # Number of peaks to pick
     k = 3  # Window size for smoothing
     clustering_threshold = 100
