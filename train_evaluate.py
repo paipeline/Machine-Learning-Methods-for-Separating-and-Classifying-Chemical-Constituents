@@ -1,6 +1,5 @@
 from sklearn.preprocessing import StandardScaler
 import torch
-import wandb
 from torch.utils.data import TensorDataset
 from torch.utils.data import DataLoader
 from models.models import CNNModel,DNNModel, get_rf_model, get_svr_model,UNetModel  # Custom model imports
@@ -32,7 +31,6 @@ def train_model(model, train_loader, criterion, optimizer, epochs):
             loss = criterion(output, target)
             loss.backward()
             optimizer.step()
-        wandb.log({"epoch": epoch, "loss": loss.item()})
 
 def evaluate_model(model, test_loader):
     """ Evaluates a model by calculating the mean squared error over a test dataset. """
@@ -111,10 +109,34 @@ def train_and_evaluate_all_models(train_X, train_Y, test_X, test_Y):
     scaler.fit(train_X) 
     train_X = scaler.transform(train_X)
     test_X = scaler.transform(test_X)
+    original_shape = (-1, 2, 10)
+    cnn_train_X = train_X.reshape(original_shape)
+    cnn_test_X = test_X.reshape(original_shape)
+
+    for model_name, get_model in [('CNN', CNNModel)]:
+        mses = []
+        for train_index, test_index in kf.split(cnn_train_X):
+            X_train, X_test = cnn_train_X[train_index], cnn_train_X[test_index]
+            y_train, y_test = train_Y[train_index], train_Y[test_index]
+
+            train_dataset = TensorDataset(torch.Tensor(X_train), torch.Tensor(y_train))
+            test_dataset = TensorDataset(torch.Tensor(X_test), torch.Tensor(y_test))
+            train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+            test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+
+            model = get_model(input_shape=original_shape[1:])
+            optimizer = torch.optim.Adam(model.parameters())
+            criterion = torch.nn.MSELoss()
+
+            train_model(model, train_loader, criterion, optimizer, epochs=10)
+            mse = evaluate_model(model, test_loader)
+            mses.append(mse)
+
+        avg_mse = sum(mses) / len(mses)
+        model_metrics[model_name] = avg_mse
 
 
     for model_name, get_model in [('DNN', DNNModel)]:
-        wandb.init(project = "ML methods for demixing PAH",entity = "ppeng24",name = f"Training_{model_name}")
         mses = []
         for train_index, test_index in kf.split(train_X):
             X_train, X_test = train_X[train_index], train_X[test_index]
@@ -138,7 +160,6 @@ def train_and_evaluate_all_models(train_X, train_Y, test_X, test_Y):
 
     # Training and evaluating Random Forest and SVR models
     for model_name, get_model in [('RF', get_rf_model), ('SVR', get_svr_model)]:
-        wandb.init(project = "ML methods for demixing PAH",entity = "ppeng24",name = f"Training_{model_name}")
         mses = []
         for train_index, test_index in kf.split(train_X):
             X_train, X_test = train_X[train_index], train_X[test_index]
