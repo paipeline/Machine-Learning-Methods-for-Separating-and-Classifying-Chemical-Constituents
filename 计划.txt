@@ -1,0 +1,38 @@
+1. add CNN
+
+1. change weight and bias to matplotlib scientific plot
+
+2. visualization original data
+
+3. integrate Chens code
+
+4. grid search
+
+5. data augmentation
+
+
+
+---------------------------------
+
+two cnn models, dont know which one to use
+
+
+
+
+
+data augmentation:
+    Noise Addition: You can add random noise to the spectra. This could be Gaussian noise or other types of noise that are typical in spectroscopic measurements. The key is to add noise at a level that is realistic and representative of what might be encountered in actual measurements.
+
+    Baseline Drift Simulation: Raman spectra can be affected by baseline drift due to various factors. You can simulate this by adding a slowly varying function (like a low-degree polynomial) to the spectra.
+
+    Scaling and Normalization Variations: Apply slight variations in the scaling or normalization of the spectra. For instance, multiplying the spectrum by a factor close to 1 can simulate variations in signal intensity.
+
+    Peak Shifting: Slightly shift the peaks in the spectra. This can simulate the effect of variations in the experimental setup or conditions.
+
+    Data Warping: Apply slight warping to the spectra. This can be done by interpolating the spectra on a slightly distorted wavelength axis.
+
+    Mixup: Combine pairs of spectra by taking a weighted average of their intensities. The weights are typically chosen at random, ensuring they sum up to one.
+
+    Spectral Smoothing: Apply smoothing filters like Savitzky-Golay or moving average to generate smoother versions of the spectra.
+
+    Random Cropping or Zero-padding: Randomly crop segments of the spectra and either analyze these segments directly or zero-pad them back to the original length.

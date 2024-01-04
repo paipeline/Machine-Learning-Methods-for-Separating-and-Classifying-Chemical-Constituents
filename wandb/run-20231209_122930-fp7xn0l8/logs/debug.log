@@ -1,0 +1,66 @@
+2023-12-09 12:29:30,359 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Current SDK version is 0.16.0
+2023-12-09 12:29:30,359 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Configure stats pid to 18152
+2023-12-09 12:29:30,359 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Loading settings from C:\Users\23675\.config\wandb\settings
+2023-12-09 12:29:30,360 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Loading settings from C:\Users\23675\OneDrive - UW-Madison\Desktop\research final\wandb\settings
+2023-12-09 12:29:30,360 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Loading settings from environment variables: {}
+2023-12-09 12:29:30,360 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2023-12-09 12:29:30,360 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'main.py', 'program_abspath': 'C:\\Users\\23675\\OneDrive - UW-Madison\\Desktop\\research final\\main.py', 'program': 'C:\\Users\\23675\\OneDrive - UW-Madison\\Desktop\\research final\\main.py'}
+2023-12-09 12:29:30,360 INFO    MainThread:18152 [wandb_init.py:_log_setup():524] Logging user logs to C:\Users\23675\OneDrive - UW-Madison\Desktop\research final\wandb\run-20231209_122930-fp7xn0l8\logs\debug.log
+2023-12-09 12:29:30,361 INFO    MainThread:18152 [wandb_init.py:_log_setup():525] Logging internal logs to C:\Users\23675\OneDrive - UW-Madison\Desktop\research final\wandb\run-20231209_122930-fp7xn0l8\logs\debug-internal.log
+2023-12-09 12:29:30,361 INFO    MainThread:18152 [wandb_init.py:init():564] calling init triggers
+2023-12-09 12:29:30,362 INFO    MainThread:18152 [wandb_init.py:init():571] wandb.init called with sweep_config: {}
+config: {}
+2023-12-09 12:29:30,362 INFO    MainThread:18152 [wandb_init.py:init():614] starting backend
+2023-12-09 12:29:30,362 INFO    MainThread:18152 [wandb_init.py:init():618] setting up manager
+2023-12-09 12:29:30,409 INFO    MainThread:18152 [backend.py:_multiprocessing_setup():105] multiprocessing start_methods=spawn, using: spawn
+2023-12-09 12:29:30,437 INFO    MainThread:18152 [wandb_init.py:init():624] backend started and connected
+2023-12-09 12:29:30,485 INFO    MainThread:18152 [wandb_init.py:init():716] updated telemetry
+2023-12-09 12:29:30,591 INFO    MainThread:18152 [wandb_init.py:init():749] communicating run to backend with 90.0 second timeout
+2023-12-09 12:29:30,987 INFO    MainThread:18152 [wandb_run.py:_on_init():2254] communicating current version
+2023-12-09 12:29:31,072 INFO    MainThread:18152 [wandb_run.py:_on_init():2263] got version response upgrade_message: "wandb version 0.16.1 is available!  To upgrade, please run:\n $ pip install wandb --upgrade"
+
+2023-12-09 12:29:31,072 INFO    MainThread:18152 [wandb_init.py:init():800] starting run threads in backend
+2023-12-09 12:29:55,042 INFO    MainThread:18152 [wandb_run.py:_console_start():2233] atexit reg
+2023-12-09 12:29:55,044 INFO    MainThread:18152 [wandb_run.py:_redirect():2088] redirect: wrap_raw
+2023-12-09 12:29:55,044 INFO    MainThread:18152 [wandb_run.py:_redirect():2153] Wrapping output streams.
+2023-12-09 12:29:55,044 INFO    MainThread:18152 [wandb_run.py:_redirect():2178] Redirects installed.
+2023-12-09 12:29:55,046 INFO    MainThread:18152 [wandb_init.py:init():841] run started, returning control to user process
+2023-12-09 12:29:58,086 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Current SDK version is 0.16.0
+2023-12-09 12:29:58,086 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Configure stats pid to 18152
+2023-12-09 12:29:58,087 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Loading settings from C:\Users\23675\.config\wandb\settings
+2023-12-09 12:29:58,087 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Loading settings from C:\Users\23675\OneDrive - UW-Madison\Desktop\research final\wandb\settings
+2023-12-09 12:29:58,087 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Loading settings from environment variables: {}
+2023-12-09 12:29:58,088 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2023-12-09 12:29:58,088 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'main.py', 'program_abspath': 'C:\\Users\\23675\\OneDrive - UW-Madison\\Desktop\\research final\\main.py', 'program': 'C:\\Users\\23675\\OneDrive - UW-Madison\\Desktop\\research final\\main.py'}
+2023-12-09 12:29:58,088 INFO    MainThread:18152 [wandb_init.py:_log_setup():524] Logging user logs to C:\Users\23675\OneDrive - UW-Madison\Desktop\research final\wandb\run-20231209_122958-gfromca5\logs\debug.log
+2023-12-09 12:29:58,089 INFO    MainThread:18152 [wandb_init.py:_log_setup():525] Logging internal logs to C:\Users\23675\OneDrive - UW-Madison\Desktop\research final\wandb\run-20231209_122958-gfromca5\logs\debug-internal.log
+2023-12-09 12:29:58,089 INFO    MainThread:18152 [wandb_init.py:init():564] calling init triggers
+2023-12-09 12:29:58,089 INFO    MainThread:18152 [wandb_init.py:init():571] wandb.init called with sweep_config: {}
+config: {}
+2023-12-09 12:29:58,089 INFO    MainThread:18152 [wandb_init.py:init():609] wandb.init() called when a run is still active
+2023-12-09 12:30:00,788 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Current SDK version is 0.16.0
+2023-12-09 12:30:00,789 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Configure stats pid to 18152
+2023-12-09 12:30:00,789 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Loading settings from C:\Users\23675\.config\wandb\settings
+2023-12-09 12:30:00,789 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Loading settings from C:\Users\23675\OneDrive - UW-Madison\Desktop\research final\wandb\settings
+2023-12-09 12:30:00,789 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Loading settings from environment variables: {}
+2023-12-09 12:30:00,789 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2023-12-09 12:30:00,790 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'main.py', 'program_abspath': 'C:\\Users\\23675\\OneDrive - UW-Madison\\Desktop\\research final\\main.py', 'program': 'C:\\Users\\23675\\OneDrive - UW-Madison\\Desktop\\research final\\main.py'}
+2023-12-09 12:30:00,791 INFO    MainThread:18152 [wandb_init.py:_log_setup():524] Logging user logs to C:\Users\23675\OneDrive - UW-Madison\Desktop\research final\wandb\run-20231209_123000-vsfycn6s\logs\debug.log
+2023-12-09 12:30:00,791 INFO    MainThread:18152 [wandb_init.py:_log_setup():525] Logging internal logs to C:\Users\23675\OneDrive - UW-Madison\Desktop\research final\wandb\run-20231209_123000-vsfycn6s\logs\debug-internal.log
+2023-12-09 12:30:00,792 INFO    MainThread:18152 [wandb_init.py:init():564] calling init triggers
+2023-12-09 12:30:00,792 INFO    MainThread:18152 [wandb_init.py:init():571] wandb.init called with sweep_config: {}
+config: {}
+2023-12-09 12:30:00,792 INFO    MainThread:18152 [wandb_init.py:init():609] wandb.init() called when a run is still active
+2023-12-09 12:30:13,687 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Current SDK version is 0.16.0
+2023-12-09 12:30:13,687 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Configure stats pid to 18152
+2023-12-09 12:30:13,687 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Loading settings from C:\Users\23675\.config\wandb\settings
+2023-12-09 12:30:13,688 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Loading settings from C:\Users\23675\OneDrive - UW-Madison\Desktop\research final\wandb\settings
+2023-12-09 12:30:13,688 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Loading settings from environment variables: {}
+2023-12-09 12:30:13,688 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2023-12-09 12:30:13,688 INFO    MainThread:18152 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'main.py', 'program_abspath': 'C:\\Users\\23675\\OneDrive - UW-Madison\\Desktop\\research final\\main.py', 'program': 'C:\\Users\\23675\\OneDrive - UW-Madison\\Desktop\\research final\\main.py'}
+2023-12-09 12:30:13,689 INFO    MainThread:18152 [wandb_init.py:_log_setup():524] Logging user logs to C:\Users\23675\OneDrive - UW-Madison\Desktop\research final\wandb\run-20231209_123013-hej3t1u8\logs\debug.log
+2023-12-09 12:30:13,689 INFO    MainThread:18152 [wandb_init.py:_log_setup():525] Logging internal logs to C:\Users\23675\OneDrive - UW-Madison\Desktop\research final\wandb\run-20231209_123013-hej3t1u8\logs\debug-internal.log
+2023-12-09 12:30:13,690 INFO    MainThread:18152 [wandb_init.py:init():564] calling init triggers
+2023-12-09 12:30:13,690 INFO    MainThread:18152 [wandb_init.py:init():571] wandb.init called with sweep_config: {}
+config: {}
+2023-12-09 12:30:13,691 INFO    MainThread:18152 [wandb_init.py:init():609] wandb.init() called when a run is still active

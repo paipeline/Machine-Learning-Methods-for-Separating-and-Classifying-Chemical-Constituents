@@ -8,7 +8,7 @@ from src.utils import plot_metrics, print_metrics  # Utility functions for metri
 from sklearn.model_selection import KFold
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import numpy as np
-
+import matplotlib.pyplot as plt
 """
 train_evaluate.py
 
@@ -23,16 +23,21 @@ Functions:
 - train_and_evaluate_all_models: Orchestrates the training and evaluation of all specified models
 """
 def train_model(model, train_loader, criterion, optimizer, epochs):
-    """ Trains a model over a specified number of epochs. """
+    losses = []
     for epoch in range(epochs):
         model.train()
+        total_loss = 0
         for batch_idx, (data, target) in enumerate(train_loader):
             optimizer.zero_grad()
             output = model(data)
             loss = criterion(output, target)
             loss.backward()
             optimizer.step()
-        wandb.log({"epoch": epoch, "loss": loss.item()})
+            total_loss += loss.item()
+        epoch_loss = total_loss / len(train_loader)
+        losses.append(epoch_loss)
+    return losses
+
 
 def evaluate_model(model, test_loader):
     """ Evaluates a model by calculating the mean squared error over a test dataset. """
@@ -75,8 +80,24 @@ def perform_kfold_cv(X, Y, model, k=5):
     avg_mse = sum(mses) / len(mses)
     return avg_mse  # Return the average MSE over all folds
 
-
+def plot_predictions_vs_actual(y_true, y_pred, title):
+    plt.figure(figsize=(10, 6))
+    plt.scatter(y_true, y_pred, alpha=0.5)
+    plt.xlabel("Actual Labels")
+    plt.ylabel("Predicted Labels")
+    plt.title(title)
+    plt.plot([y_true.min(), y_true.max()], [y_true.min(), y_true.max()], 'k--', lw=2)  # Reference line
+    plt.show()
+def plot_learning_curve(losses, title, ylabel='Loss', xlabel='Epochs'):
+    plt.figure(figsize=(10, 6))
+    plt.plot(losses, label='Training Loss')
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.legend()
+    plt.show()
 """
+
 train_and_evaluate_all_models
 
 Trains and evaluates multiple machine learning models, including both PyTorch-based neural networks
@@ -101,9 +122,10 @@ The function prints the average MSE for each model, giving insights into their c
 Returns:
 - None: The function prints the average MSE for each model but does not return any values.
 """
-def train_and_evaluate_all_models(train_X, train_Y, test_X, test_Y):
 
+def train_and_evaluate_all_models(train_X, train_Y, test_X, test_Y):
     model_metrics = {}
+    fold_losses = {}  # To store losses for each fold
     kf = KFold(n_splits=5, shuffle=True, random_state=30)
     train_X = train_X.reshape(train_X.shape[0], -1)
     test_X = test_X.reshape(test_X.shape[0], -1)
@@ -112,49 +134,62 @@ def train_and_evaluate_all_models(train_X, train_Y, test_X, test_Y):
     train_X = scaler.transform(train_X)
     test_X = scaler.transform(test_X)
 
-
-    for model_name, get_model in [('DNN', DNNModel)]:
-        wandb.init(project = "ML methods for demixing PAH",entity = "ppeng24",name = f"Training_{model_name}")
+    # Models to train
+    models_to_train = {
+        'DNN': DNNModel,
+        'RF': get_rf_model,
+        'SVR': get_svr_model
+    }
+    fold_mses = {}
+    for model_name, get_model in models_to_train.items():
         mses = []
-        for train_index, test_index in kf.split(train_X):
+        fold_losses[model_name] = []
+        fold_mses[model_name] = []  # Initialize list for traditional models' MSEs
+
+        for fold, (train_index, test_index) in enumerate(kf.split(train_X)):
             X_train, X_test = train_X[train_index], train_X[test_index]
             y_train, y_test = train_Y[train_index], train_Y[test_index]
 
-            train_dataset = TensorDataset(torch.Tensor(X_train), torch.Tensor(y_train))
-            test_dataset = TensorDataset(torch.Tensor(X_test), torch.Tensor(y_test))
-            train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-            test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+            if model_name in ['DNN']:
+                # Training for deep learning models
+                model = get_model(input_dim=X_train.shape[1], output_dim=y_train.shape[1])
+                optimizer = torch.optim.Adam(model.parameters())
+                criterion = torch.nn.MSELoss()
 
-            model = get_model(input_dim=train_X.shape[1],output_dim = train_Y.shape[1])
-            optimizer = torch.optim.Adam(model.parameters())
-            criterion = torch.nn.MSELoss()
+                train_dataset = TensorDataset(torch.Tensor(X_train), torch.Tensor(y_train))
+                test_dataset = TensorDataset(torch.Tensor(X_test), torch.Tensor(y_test))
+                train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+                test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
-            train_model(model, train_loader, criterion, optimizer, epochs=10)
-            mse = evaluate_model(model, test_loader)
-            mses.append(mse)
+                losses = train_model(model, train_loader, criterion, optimizer, epochs=10)
+                mse = evaluate_model(model, test_loader)
+                mses.append(mse)
+                fold_losses[model_name].append(losses)
 
+            else:
+                # Training for traditional models
+                model = get_model()
+                model.fit(X_train, y_train)
+                preds = model.predict(X_test)
+                mse = mean_squared_error(y_test, preds)
+                mses.append(mse)
+                fold_mses[model_name].append(mse)
         avg_mse = sum(mses) / len(mses)
         model_metrics[model_name] = avg_mse
 
-    # Training and evaluating Random Forest and SVR models
-    for model_name, get_model in [('RF', get_rf_model), ('SVR', get_svr_model)]:
-        wandb.init(project = "ML methods for demixing PAH",entity = "ppeng24",name = f"Training_{model_name}")
-        mses = []
-        for train_index, test_index in kf.split(train_X):
-            X_train, X_test = train_X[train_index], train_X[test_index]
-            y_train, y_test = train_Y[train_index], train_Y[test_index]
+    # Plotting losses and MSEs
+    for model_name, losses in fold_losses.items():
+        plt.figure(figsize=(12, 6))
+        for fold, fold_loss in enumerate(losses):
+            plt.plot(fold_loss, label=f'Fold {fold+1}')
+        plt.title(f'Training Losses for {model_name}')
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.show()
 
-            model = get_model()
-            model.fit(X_train, y_train)
-            preds = model.predict(X_test)
-            mse = mean_squared_error(y_test, preds)
-            mses.append(mse)
-
-        avg_mse = sum(mses) / len(mses)
-        model_metrics[model_name] = avg_mse
-
-    # Print the average MSE for each model
     for model_name, mse in model_metrics.items():
         print(f"Average MSE for {model_name}: {mse}")
 
-
+# Call the function with your data
+# train_and_evaluate_all_models(train_X, train_Y, test_X, test_Y)

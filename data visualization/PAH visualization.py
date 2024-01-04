@@ -5,7 +5,7 @@ __copyright__   = "Copyright 2023"
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import numpy as np
-from dataPreprocess import process_data
+from ..src.dataPreprocess import process_data
 from repeat import increase_m_and_repeat
 from maxPooling import max_pool
 #TODO except for pesticide

@@ -1,0 +1,26 @@
+2023-12-10 08:20:37,104 INFO    MainThread:28956 [wandb_setup.py:_flush():76] Current SDK version is 0.16.0
+2023-12-10 08:20:37,105 INFO    MainThread:28956 [wandb_setup.py:_flush():76] Configure stats pid to 28956
+2023-12-10 08:20:37,106 INFO    MainThread:28956 [wandb_setup.py:_flush():76] Loading settings from C:\Users\23675\.config\wandb\settings
+2023-12-10 08:20:37,106 INFO    MainThread:28956 [wandb_setup.py:_flush():76] Loading settings from c:\Users\23675\OneDrive - UW-Madison\Desktop\research final\wandb\settings
+2023-12-10 08:20:37,107 INFO    MainThread:28956 [wandb_setup.py:_flush():76] Loading settings from environment variables: {}
+2023-12-10 08:20:37,107 INFO    MainThread:28956 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2023-12-10 08:20:37,108 INFO    MainThread:28956 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'main.py', 'program_abspath': 'C:\\Users\\23675\\OneDrive - UW-Madison\\Desktop\\research final\\main.py', 'program': 'C:\\Users\\23675\\OneDrive - UW-Madison\\Desktop\\research final\\main.py'}
+2023-12-10 08:20:37,109 INFO    MainThread:28956 [wandb_init.py:_log_setup():524] Logging user logs to c:\Users\23675\OneDrive - UW-Madison\Desktop\research final\wandb\run-20231210_082037-w55nrsky\logs\debug.log
+2023-12-10 08:20:37,110 INFO    MainThread:28956 [wandb_init.py:_log_setup():525] Logging internal logs to c:\Users\23675\OneDrive - UW-Madison\Desktop\research final\wandb\run-20231210_082037-w55nrsky\logs\debug-internal.log
+2023-12-10 08:20:37,110 INFO    MainThread:28956 [wandb_init.py:init():564] calling init triggers
+2023-12-10 08:20:37,111 INFO    MainThread:28956 [wandb_init.py:init():571] wandb.init called with sweep_config: {}
+config: {}
+2023-12-10 08:20:37,111 INFO    MainThread:28956 [wandb_init.py:init():609] wandb.init() called when a run is still active
+2023-12-10 08:20:53,011 INFO    MainThread:28956 [wandb_setup.py:_flush():76] Current SDK version is 0.16.0
+2023-12-10 08:20:53,012 INFO    MainThread:28956 [wandb_setup.py:_flush():76] Configure stats pid to 28956
+2023-12-10 08:20:53,013 INFO    MainThread:28956 [wandb_setup.py:_flush():76] Loading settings from C:\Users\23675\.config\wandb\settings
+2023-12-10 08:20:53,016 INFO    MainThread:28956 [wandb_setup.py:_flush():76] Loading settings from c:\Users\23675\OneDrive - UW-Madison\Desktop\research final\wandb\settings
+2023-12-10 08:20:53,017 INFO    MainThread:28956 [wandb_setup.py:_flush():76] Loading settings from environment variables: {}
+2023-12-10 08:20:53,018 INFO    MainThread:28956 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2023-12-10 08:20:53,019 INFO    MainThread:28956 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'main.py', 'program_abspath': 'C:\\Users\\23675\\OneDrive - UW-Madison\\Desktop\\research final\\main.py', 'program': 'C:\\Users\\23675\\OneDrive - UW-Madison\\Desktop\\research final\\main.py'}
+2023-12-10 08:20:53,021 INFO    MainThread:28956 [wandb_init.py:_log_setup():524] Logging user logs to c:\Users\23675\OneDrive - UW-Madison\Desktop\research final\wandb\run-20231210_082052-vygu9wic\logs\debug.log
+2023-12-10 08:20:53,022 INFO    MainThread:28956 [wandb_init.py:_log_setup():525] Logging internal logs to c:\Users\23675\OneDrive - UW-Madison\Desktop\research final\wandb\run-20231210_082052-vygu9wic\logs\debug-internal.log
+2023-12-10 08:20:53,023 INFO    MainThread:28956 [wandb_init.py:init():564] calling init triggers
+2023-12-10 08:20:53,024 INFO    MainThread:28956 [wandb_init.py:init():571] wandb.init called with sweep_config: {}
+config: {}
+2023-12-10 08:20:53,025 INFO    MainThread:28956 [wandb_init.py:init():609] wandb.init() called when a run is still active
