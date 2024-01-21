@@ -1,4 +1,6 @@
 import os
+print("New current working directory:", os.getcwd())
+
 import numpy as np
 import re
 from preprocessor import Preprocessor
@@ -17,7 +19,7 @@ class PAHRatio:
     - model_labels (np.array): Numpy array to store the final labels for the model.
     """
 
-    def __init__(self, lib, m=10, clustering_threshold=20, K=5, maxIt=100):
+    def __init__(self, lib, m=10, clustering_threshold=20, K=5, maxIt=100,prominence = 0.02):
         """
         Initializes the PAHRatio class with the given parameters.
         """
@@ -32,6 +34,7 @@ class PAHRatio:
         self.pesticide_labels = []
         self.model_inputs = None
         self.model_labels = None
+        self.prominence =prominence
 
     def seperate_letter_num(self, string):
         """
@@ -70,7 +73,7 @@ class PAHRatio:
         for file in os.listdir(self.lib):
             if file.endswith('.xlsx'):
                 file_path = os.path.join(self.lib, file)
-                pre_pro = Preprocessor(file_path, self.m, self.clustering_threshold, self.maxIt, self.K)
+                pre_pro = Preprocessor(file_path, self.m, self.clustering_threshold, self.maxIt, self.K, self.prominence)
                 pooled_vectors = pre_pro.run()
                 label = self.get_pah_ratios(file)
                 print(f"--- loading {file} ---")
@@ -81,7 +84,7 @@ class PAHRatio:
                     else: # for pesticide
                         self.pesticide_inputs.append(pooled_vectors[col])
                         self.pesticide_labels.append(label)
-                print(f"{file} gets processed successfully")
+                print(f"/t{file} gets processed successfully")
                         
     def prepare_model_data(self):
         """
@@ -115,5 +118,5 @@ class PAHRatio:
 
 # Example usage of the class
 if __name__ == '__main__':
-    pah_predictor = PAHRatio(lib='raw dataset', m=10, clustering_threshold=20, K=5, maxIt=100)
+    pah_predictor = PAHRatio(lib='raw_dataset', m=10, clustering_threshold=20, K=5, maxIt=100, prominence =0.2)
     pah_predictor.run()

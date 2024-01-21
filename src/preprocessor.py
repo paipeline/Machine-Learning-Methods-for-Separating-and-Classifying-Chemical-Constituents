@@ -6,7 +6,7 @@ from typing import Tuple, List, Dict
 
 class Preprocessor:
 
-    def __init__(self, file_path: str, m: int, threshold: int, mat_iteration: int, windows_size: int):
+    def __init__(self, file_path: str, m: int, threshold: int, mat_iteration: int, windows_size: int, prominence:int):
         """
         Simple fetch all parameters.
 
@@ -16,57 +16,76 @@ class Preprocessor:
         :param mat_iteration: Max number of iteration if num of clusters never reaches m
         :param windows_size: the size of the rolling window
         """
+        self.prominence = prominence
         self.file_path = file_path
         self.m = m
         self.threshold = threshold
         self.max_it = mat_iteration
         self.window = windows_size
-
+    # The following methods will be processed orderly
     @staticmethod
-    def raw_data_process(file_path: str, m: int, window_size: int) -> Tuple[Dict[str, pd.Series], List[int]]:
+    def load_raw_data(file_path: str) -> Tuple[pd.Series, Dict[str, pd.Series]]:
         """
-        This method takes raw Ramen Shift data from pre-given files, smooth them using a specific
-        size rolling mean window, and extract peaks with prominence of 0.02, after all data is
-        normalized to [0, 1].
+        Load raw data from an Excel file.
         """
-
-        # Load the Excel file into a DataFrame
-
         data_file = pd.read_excel(file_path)
-
-        # Extract the x-values (assuming they are in the first column)
         x_values = data_file.iloc[:, 0]
-        # y_value consists of multiple different testing samples
-        y_values_dict = {}
+        y_values_dict = {col: data_file[col] for col in data_file.columns[1:]}
+        print("*RAW-window-normalize-peaks")
+        return x_values, y_values_dict
 
-        # We need to count peaks of prominence of 0.02, and sum over all cols
+    def apply_rolling_window(self, y_values_dict: Dict[str, pd.Series]) -> Dict[str, pd.Series]:
+        """
+        Apply a rolling window to smooth the y-values.
+        """
+        print("raw-*WINDOW-normalize-peaks")
+        return {col: y_values.rolling(window=self.window).mean() for col, y_values in y_values_dict.items()}    
+    def normalize_data(self,y_values_dict: Dict[str, pd.Series]) -> Dict[str, pd.Series]:
+        """
+        Normalize the smoothed y-values.
+        """
+        print("raw-window-*NORMALIZE-peaks")
+        return {col: (y_values - y_values.min()) / (y_values.max() - y_values.min()) 
+                for col, y_values in y_values_dict.items()}
+
+    def find_peaks(self,y_values_dict: Dict[str, pd.Series], x_values: pd.Series, m: int) -> Tuple[Dict[str, pd.Series], List[int]]:
+        """
+        Detect peaks in the normalized y-values.
+        """
         total_peaks = np.zeros_like(x_values)
-
-        # Loop over each column (excluding the first one, which has x-values)
-        for col in data_file.columns[1:]:
-            y_values = data_file[col]
-            # Smooth the y-values using a rolling window
-            y_smooth = y_values.rolling(window=window_size).mean()
-            # Normalize the smoothed y-values
-            normalized_y_smooth = (y_smooth - y_smooth.min()) / (y_smooth.max() - y_smooth.min())
-            # Detect peaks in the normalized y-values, and save them into a binary vector
-            peak_indices, _ = find_peaks(normalized_y_smooth, prominence=0.02)
-            binary_peak_vector = np.zeros_like(normalized_y_smooth)
+        for col, y_values in y_values_dict.items():
+            peak_indices, _ = find_peaks(y_values, prominence=self.prominence)
+            binary_peak_vector = np.zeros_like(y_values)
             binary_peak_vector[peak_indices] = 1
-
-            # Sum over all cols and save smoothed y-value
             total_peaks += binary_peak_vector
-            y_values_dict[col] = normalized_y_smooth
 
-        # Extract the top 'm' prominent peaks
         top_peaks = total_peaks.argsort()[::-1][:m]
         extracted_peaks = np.zeros_like(total_peaks)
         extracted_peaks[top_peaks] = total_peaks[top_peaks]
 
-        return {'x': x_values, 'y': y_values_dict, 'peaks': extracted_peaks}, top_peaks
+        data_with_peaks = {
+            'x': x_values,
+            'y': y_values_dict,
+            'peaks': extracted_peaks
+        }
+        print("raw-window-normalize-*PEAKS")
+        print(" ")
+        return data_with_peaks, top_peaks
 
-    @staticmethod
-    def cluster_peaks(data: dict, threshold: int, indices: list) -> dict:
+    
+    def raw_data_process(self,m_star) -> Tuple[Dict[str, pd.Series], List[int]]:
+        """
+        This method takes raw Ramen Shift data from pre-given files, smooth them using a specific
+        size rolling mean window, and extract peaks with prominence (of default 0.02), after all data is
+        normalized to [0, 1].
+        """
+        x_values, y_values_dict = self.load_raw_data(self.file_path)
+        y_smoothed = self.apply_rolling_window(y_values_dict)
+        y_normalized = self.normalize_data(y_smoothed)
+        return self.find_peaks(y_normalized, x_values, m_star)
+    
+    
+    def cluster_peaks(self, data: dict, threshold: int, indices: list) -> dict:
         """
         Clusters peaks that are within the given threshold.
         """
@@ -127,7 +146,8 @@ class Preprocessor:
         number of clusters exceed m or the maximum number of iterations is reached.
         """
         # Fetch Data
-        data, peak_indices = self.raw_data_process(file_path, m, window_size)
+        print("--init--")
+        data, peak_indices = self.raw_data_process(m)
         data = self.cluster_peaks(data, threshold, peak_indices)
         m_cluster = len(data['peaks'])
         m_star = m
@@ -136,16 +156,17 @@ class Preprocessor:
         # Iteration till we have equal or more than m clusters, or max_it reaches.
         while m_cluster < m and iterations < max_iterations:
             m_star += int(m * increase_rate)
-            data, peak_indices = self.raw_data_process(file_path, m_star, window_size)
+            data, peak_indices = self.raw_data_process(m_star)
             data = self.cluster_peaks(data, threshold, peak_indices)
             m_cluster = len(data['peaks'])
+            print("------iter:", iterations, "m star:", m_star," length cluster:", m_cluster, "-------")
             iterations += 1
 
         # Sort the clusters by their count and keep only the top ones
         sorted_clusters = sorted(data['peaks'].items(), key=lambda x: x[1]['count'], reverse=True)
         top_clusters = dict(sorted_clusters[:m])
 
-        # print(type(top_clusters))
+        
         return top_clusters, data
 
     def run(self) -> dict:
