@@ -6,7 +6,7 @@ from typing import Tuple, List, Dict
 
 class Preprocessor:
 
-    def __init__(self, file_path: str, m: int, threshold: int, mat_iteration: int, windows_size: int, prominence:int):
+    def __init__(self, file_path: str, m: int, threshold: int, mat_iteration: int, window: int, prominence:int):
         """
         Simple fetch all parameters.
 
@@ -14,14 +14,14 @@ class Preprocessor:
         :param m: The required number of clusters
         :param threshold: Clustering threshold
         :param mat_iteration: Max number of iteration if num of clusters never reaches m
-        :param windows_size: the size of the rolling window
+        :param window: the size of the rolling window
         """
         self.prominence = prominence
         self.file_path = file_path
         self.m = m
         self.threshold = threshold
         self.max_it = mat_iteration
-        self.window = windows_size
+        self.window = window
     # The following methods will be processed orderly
     @staticmethod
     def load_raw_data(file_path: str) -> Tuple[pd.Series, Dict[str, pd.Series]]:
@@ -138,7 +138,7 @@ class Preprocessor:
 
         return pooled_vectors
 
-    def increase_m_and_repeat(self, file_path: str, m: int, threshold: int, window_size: int,
+    def increase_m_and_repeat(self, file_path: str, m: int, threshold: int, window: int,
                               max_iterations: int,
                               increase_rate: float = 0.2) -> Tuple[Dict[int, Dict[str, int]], Dict[str, pd.Series]]:
         """
@@ -155,7 +155,7 @@ class Preprocessor:
 
         # Iteration till we have equal or more than m clusters, or max_it reaches.
         while m_cluster < m and iterations < max_iterations:
-            m_star += int(m * increase_rate)
+            m_star += int(m * increase_rate) # more PEAKS
             data, peak_indices = self.raw_data_process(m_star)
             data = self.cluster_peaks(data, threshold, peak_indices)
             m_cluster = len(data['peaks'])
