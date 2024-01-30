@@ -3,7 +3,7 @@ print("New current working directory:", os.getcwd())
 
 import numpy as np
 import re
-from preprocessor import Preprocessor
+from src.preprocessor import Preprocessor
 from sklearn.model_selection import train_test_split
 
 class PAHRatio:
@@ -74,6 +74,19 @@ class PAHRatio:
         for file in os.listdir(self.lib):
             if file.endswith('.xlsx'):
                 file_path = os.path.join(self.lib, file)
+                pre_pro = Preprocessor(file_path, self.m, self.clustering_threshold, self.maxIt, self.K, self.prominence)
+                print(f"{file} gets processed successfully")
+                pooled_vectors = pre_pro.run()
+
+                label = self.get_pah_ratios(file)
+                for col in pooled_vectors:
+                    self.inputs.append(pooled_vectors[col])
+                    self.labels.append(label)
+        # Temporarily commented out for debugging purposes
+        """
+        for file in os.listdir(self.lib):
+            if file.endswith('.xlsx'):
+                file_path = os.path.join(self.lib, file)
                 
                 pre_pro = Preprocessor(file_path, self.m, self.clustering_threshold, self.maxIt, self.K, self.prominence)
                 pooled_vectors = pre_pro.run()
@@ -87,15 +100,20 @@ class PAHRatio:
                         self.pesticide_inputs.append(pooled_vectors[col])
                         self.pesticide_labels.append(label)
                 print(f"/t{file} gets processed successfully")
+        """
                         
-    def prepare_model_data(self):
+    def prepare_model_data(self, test_size=0.1):
         """
         Prepares the model data by converting inputs and labels to numpy arrays.
         """
+        print(test_size)
         self.model_inputs = np.array(self.inputs)
         self.model_labels = np.stack(self.labels)
-        self.train_inputs, self.test_inputs, self.train_labels, self.test_labels = train_test_split(
-            self.model_inputs, self.model_labels, test_size=128, random_state=42)
+        #print("Model Inputs Shape:", self.model_inputs.shape)
+        #print("Model Labels Shape:", self.model_labels.shape)
+        if test_size > 0:
+            self.train_inputs, self.test_inputs, self.train_labels, self.test_labels = train_test_split(
+                self.model_inputs, self.model_labels, test_size=test_size, random_state=42)
 
     def save_processed_data(self):
         """

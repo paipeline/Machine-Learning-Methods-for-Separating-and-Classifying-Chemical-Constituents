@@ -6,7 +6,7 @@ from typing import Tuple, List, Dict
 
 class Preprocessor:
 
-    def __init__(self, file_path: str, m: int, threshold: int, mat_iteration: int, window: int, prominence:int):
+    def __init__(self, file_path: str, m: int, threshold: int, mat_iteration: int, window: int, prominence:float):
         """
         Simple fetch all parameters.
 
