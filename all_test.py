@@ -129,6 +129,22 @@ def print_metrics(mae, mse, model_name, r2, err):
     print(f"mse avg: {mse}")
     print(f"Error Rate: {err}")
 
+def final_test(train_X, train_y, test_X, test_y, pes_X, pes_y, get_model, model_name):
+    model = get_model
+    if model_name == "CNN" or model_name == "DNN":
+        model.fit(train_X, train_y, epochs=50, batch_size=4)
+    else:
+        model.fit(train_X, train_y)
+
+    rounded_pah_prediction = np.round(model.predict(test_X))
+    rounded_pes_prediction = np.round(model.predict(pes_X))
+    pah_error = np.mean(np.abs(rounded_pah_prediction - test_y) > 0)
+    pes_error = np.mean(np.abs(rounded_pes_prediction - pes_y) > 0)
+
+    print("**********************************")
+    print(f"pah Error Rate of {model_name}: {pah_error}")
+    print(f"pes Error Rate of {model_name}: {pes_error}")
+    print("**********************************")
 
 def perform_kfold_cv(X, Y, get_model, model_name, pes_x, pex_y, k=5):
     kf = KFold(n_splits=k, shuffle=True, random_state=30)
@@ -141,7 +157,7 @@ def perform_kfold_cv(X, Y, get_model, model_name, pes_x, pex_y, k=5):
         model = get_model()
 
         if model_name == "CNN" or model_name == "DNN":
-            model.fit(X_train, y_train, epochs=50, batch_size=5)
+            model.fit(X_train, y_train, epochs=50, batch_size=4)
         else:
             model.fit(X_train, y_train)
 
@@ -189,8 +205,8 @@ def create_import_data():
 
     # Here I am using model_inputs (with no portion left out) to reproduce results from previous attempts.
     # In theory, we need to use .train_inputs and .train_labels.
-    pah_train_X = np.array(pah_data.model_inputs)
-    pah_train_Y = np.array(pah_data.model_labels)
+    pah_train_X = np.array(pah_data.train_inputs)
+    pah_train_Y = np.array(pah_data.train_labels)
     # TODO Need to be adjusted to use the training set for comparing preprocessing steps.
     pah_test_X = np.array(pah_data.test_inputs)
     pah_test_Y = np.array(pah_data.test_labels)
@@ -213,7 +229,7 @@ def create_import_data():
 if __name__ == "__main__":
 
     # This is for creating data usable for models
-    create_import_data()
+    #create_import_data()
 
     """
     prev_data = PAHRatio('Data', m=10, clustering_threshold=20, K=5, maxIt=100)
@@ -235,43 +251,46 @@ if __name__ == "__main__":
     pes_X = np.load('./dataset/seperate_test_data/pes/pes_X.npy')
     pes_Y = np.load('./dataset/seperate_test_data/pes/pes_Y.npy')
 
+
     # Normalization is key to great result
     dnn_X_train = train_X.reshape(train_X.shape[0], -1)
     dnn_X_pes = pes_X.reshape(pes_X.shape[0], -1)
+    dnn_test_x = test_X.reshape(test_X.shape[0], -1)
     dnn_scaler = StandardScaler()
     dnn_scaler.fit(dnn_X_train) 
     dnn_X_train = dnn_scaler.transform(dnn_X_train)
     dnn_X_pes = dnn_scaler.transform(dnn_X_pes)
+    dnn_X_test = dnn_scaler.transform(dnn_test_x)
 
     # This section reshapes 3D data for cnn input into 2D to fit into a standard scalar
     # and then the input is reshaped back into its original shape
     cnn_input_reshape = train_X.reshape(train_X.shape[0], -1)
-    cnn_pes_input_reshape = test_X.reshape(test_X.shape[0], -1)
+    cnn_test_input_reshape = test_X.reshape(test_X.shape[0], -1)
+    cnn_pes = pes_X.reshape(pes_X.shape[0], -1)
     # print(np.array(cnn_input_reshape).shape)
     cnn_scalar = StandardScaler()
     cnn_scalar.fit_transform(cnn_input_reshape)
-    cnn_scalar.transform(cnn_pes_input_reshape)
+    cnn_scalar.transform(cnn_test_input_reshape)
     cnn_train_input = np.array(cnn_input_reshape).reshape(train_X.shape)
-    cnn_pes_input = np.array(np.array(cnn_pes_input_reshape).reshape(test_X.shape))
+    cnn_test_input = np.array(np.array(cnn_test_input_reshape).reshape(test_X.shape))
+    cnn_pes_input = np.array(np.array(cnn_pes).reshape(pes_X.shape))
 
+    """
     model_metrics = {}
     # model_metric["U"] = perform_kfold_cv(dnn_X_train, train_Y,get_unet_model,"U-net",dnn_X_test,test_Y)
 
-    model_metrics['CNN'] = perform_kfold_cv(cnn_train_input, train_Y, get_cnn_model, "CNN", pes_X, pes_Y)
+    model_metrics['CNN'] = perform_kfold_cv(cnn_train_input, train_Y, get_cnn_model, "CNN", cnn_pes_input, pes_Y)
     model_metrics['DNN'] = perform_kfold_cv(dnn_X_train, train_Y, get_dnn_model, "DNN", dnn_X_pes, pes_Y)
     model_metrics['SVR'] = perform_kfold_cv(dnn_X_train, train_Y, get_svr_model, "SVR", dnn_X_pes, pes_Y)
     model_metrics['RF'] = perform_kfold_cv(dnn_X_train, train_Y, get_rf_model, "RF", dnn_X_pes, pes_Y)
     keys = model_metrics['CNN'].keys()
-    """
     for key in keys:
         plot_metrics(key, model_metrics)
-    """
 
     # For producing the comparison table, the result we previously had is using all data to do k-fold, lefting out
     # no testing data.
     # TODO Comparing preprocessing w or w/o baseline_removal & w or w/o rolling window
 
-    """
     col_names = model_metrics['CNN'].keys()
     table = PrettyTable()
     table.field_names = np.hstack((np.array(['model_name']), np.array(list(col_names))))
@@ -293,3 +312,8 @@ if __name__ == "__main__":
     drawing.text(xy=(10, 10), text=table_str, fill=(0, 0, 0))
     image.save("./fig/comparison_chart.png")
     """
+
+    final_test(cnn_train_input, train_Y, cnn_test_input, test_Y, cnn_pes_input, pes_Y, get_cnn_model(), "CNN")
+    #final_test(dnn_X_train, train_Y, dnn_X_test, test_Y, dnn_X_pes, pes_Y, get_dnn_model(), "DNN")
+    #final_test(dnn_X_train, train_Y, dnn_X_test, test_Y, dnn_X_pes, pes_Y, get_svr_model(), "SVR")
+    #final_test(dnn_X_train, train_Y, dnn_X_test, test_Y, dnn_X_pes, pes_Y, get_rf_model(), "RF")
