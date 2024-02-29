@@ -136,14 +136,23 @@ def final_test(train_X, train_y, test_X, test_y, pes_X, pes_y, get_model, model_
     else:
         model.fit(train_X, train_y)
 
-    rounded_pah_prediction = np.round(model.predict(test_X))
-    rounded_pes_prediction = np.round(model.predict(pes_X))
+    prediction_pah = model.predict(test_X)
+    prediction_pes = model.predict(pes_X)
+    rounded_pah_prediction = np.round(prediction_pah)
+    rounded_pes_prediction = np.round(prediction_pes)
     pah_error = np.mean(np.abs(rounded_pah_prediction - test_y) > 0)
     pes_error = np.mean(np.abs(rounded_pes_prediction - pes_y) > 0)
+
+    precise_difference_pah_test = np.sum(np.abs(prediction_pah - test_y))
+    precise_difference_pes_test = np.sum(np.abs(prediction_pes - pes_y))
+
+
 
     print("**********************************")
     print(f"pah Error Rate of {model_name}: {pah_error}")
     print(f"pes Error Rate of {model_name}: {pes_error}")
+    print(f"The exact error amount of pah test data accross all data of {model_name}: {precise_difference_pah_test}")
+    print(f"The exact error amount of pes test data accross all data of {model_name}: {precise_difference_pes_test}")
     print("**********************************")
 
 def perform_kfold_cv(X, Y, get_model, model_name, pes_x, pex_y, k=5):
@@ -314,6 +323,6 @@ if __name__ == "__main__":
     """
 
     final_test(cnn_train_input, train_Y, cnn_test_input, test_Y, cnn_pes_input, pes_Y, get_cnn_model(), "CNN")
-    #final_test(dnn_X_train, train_Y, dnn_X_test, test_Y, dnn_X_pes, pes_Y, get_dnn_model(), "DNN")
-    #final_test(dnn_X_train, train_Y, dnn_X_test, test_Y, dnn_X_pes, pes_Y, get_svr_model(), "SVR")
-    #final_test(dnn_X_train, train_Y, dnn_X_test, test_Y, dnn_X_pes, pes_Y, get_rf_model(), "RF")
+    final_test(dnn_X_train, train_Y, dnn_X_test, test_Y, dnn_X_pes, pes_Y, get_dnn_model(), "DNN")
+    final_test(dnn_X_train, train_Y, dnn_X_test, test_Y, dnn_X_pes, pes_Y, get_svr_model(), "SVR")
+    final_test(dnn_X_train, train_Y, dnn_X_test, test_Y, dnn_X_pes, pes_Y, get_rf_model(), "RF")
