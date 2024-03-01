@@ -2,11 +2,12 @@ import numpy as np
 import pandas as pd
 from scipy.signal import find_peaks
 from typing import Tuple, List, Dict
+from BaselineRemoval import BaselineRemoval
 
 
 class Preprocessor:
 
-    def __init__(self, file_path: str, m: int, threshold: int, mat_iteration: int, window: int, prominence:float):
+    def __init__(self, file_path: str, m: int, threshold: int, mat_iteration: int, window: int, prominence:float, c = False, baseline_removal = False):
         """
         Simple fetch all parameters.
 
@@ -22,16 +23,23 @@ class Preprocessor:
         self.threshold = threshold
         self.max_it = mat_iteration
         self.window = window
-    # The following methods will be processed orderly
-    @staticmethod
-    def load_raw_data(file_path: str) -> Tuple[pd.Series, Dict[str, pd.Series]]:
+        self.baseline_removal = baseline_removal
+    def load_raw_data(self,file_path: str) -> Tuple[pd.Series, Dict[str, pd.Series]]:
         """
         Load raw data from an Excel file.
         """
         data_file = pd.read_excel(file_path)
         x_values = data_file.iloc[:, 0]
         y_values_dict = {col: data_file[col] for col in data_file.columns[1:]}
-        print("*RAW-window-normalize-peaks")
+        if self.baseline_removal:
+            for col, y_values in y_values_dict.items():
+                baseObj = BaselineRemoval(y_values)
+                y_values_dict[col] = baseObj.ZhangFit()
+            print("*Baseline-window-normalize-peaks")
+        else:
+            print("*RAW-window-normalize-peaks")
+
+            
         return x_values, y_values_dict
 
     def apply_rolling_window(self, y_values_dict: Dict[str, pd.Series]) -> Dict[str, pd.Series]:
@@ -39,7 +47,14 @@ class Preprocessor:
         Apply a rolling window to smooth the y-values.
         """
         print("raw-*WINDOW-normalize-peaks")
-        return {col: y_values.rolling(window=self.window).mean() for col, y_values in y_values_dict.items()}    
+        smoothed_dict = {}
+        for col, y_values in y_values_dict.items():
+            if isinstance(y_values, pd.Series):
+                smoothed_dict[col] = y_values.rolling(window=self.window).mean()
+            else:
+                # If it's not a Pandas Series, you can convert it to one
+                smoothed_dict[col] = pd.Series(y_values).rolling(window=self.window).mean()
+        return smoothed_dict 
     def normalize_data(self,y_values_dict: Dict[str, pd.Series]) -> Dict[str, pd.Series]:
         """
         Normalize the smoothed y-values.

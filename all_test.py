@@ -1,4 +1,4 @@
-import keras.src.activations
+from keras.src.activations import relu
 import numpy as np
 import matplotlib.pyplot as plt
 from keras import Sequential
@@ -14,7 +14,7 @@ from sklearn.svm import SVR
 from prettytable import PrettyTable
 from PIL import Image, ImageDraw
 from keras import backend
-
+import keras
 import random
 from src.input_data import PAHRatio
 
@@ -22,7 +22,7 @@ from src.input_data import PAHRatio
 RANDOM_SEED = 100
 np.random.seed(RANDOM_SEED)
 random.seed(RANDOM_SEED)
-keras.utils.set_random_seed(RANDOM_SEED)
+#keras.utils.set_random_seed(RANDOM_SEED)
 
 def custom_loss(y_true, y_pred):
     # This is a hyperparameter to be tunned
@@ -128,6 +128,8 @@ def print_metrics(mae, mse, model_name, r2, err):
     print(f"r2 avg: {r2}")
     print(f"mse avg: {mse}")
     print(f"Error Rate: {err}")
+    results_df = pd.DataFrame(columns=['Model', 'MAE', 'MSE', 'R2', 'ErrorRate'])
+
 
 
 def perform_kfold_cv(X, Y, get_model, model_name, pes_x, pex_y, k=5):
@@ -163,6 +165,12 @@ def perform_kfold_cv(X, Y, get_model, model_name, pes_x, pex_y, k=5):
         err.append(error)
         add_err.append(add_error)
 
+        mae_avg = np.mean(maes)
+        mse_avg = np.mean(mses)
+        r2_avg = np.mean(r2s)
+        err_avg = np.mean(err)
+
+        results_df = results_df.append({'Model': model_name, 'MAE': mae_avg, 'MSE': mse_avg, 'R2': r2_avg, 'ErrorRate': err_avg}, ignore_index=True)
     print_metrics(np.mean(maes), np.mean(mses), model_name, np.mean(r2s), np.mean(err))
     print_metrics(np.mean(add_maes), np.mean(add_mses), model_name + " - Pesticide", np.mean(add_r2s), np.mean(add_err))
 
@@ -181,12 +189,12 @@ def perform_kfold_cv(X, Y, get_model, model_name, pes_x, pex_y, k=5):
 This is using our original hyperparameters. Future improvements can be made by fine tuning these parameters.
 This is preprocessed with rolling windows and without baseline-removal.
 """
-def create_import_data():
+def create_import_data(m = 10,windows_size = 50,clustering_threshold = 20,K = 5, maxIt =100):
+    # PAH
     pah_data_path = "./dataset/raw/pah"
-    pah_data = PAHRatio(pah_data_path, m=10, clustering_threshold=20, K=5, maxIt=100)
+    pah_data = PAHRatio(pah_data_path, m,windows_size, clustering_threshold, K, maxIt)
     pah_data.process_files()
     pah_data.prepare_model_data()
-
     # Here I am using model_inputs (with no portion left out) to reproduce results from previous attempts.
     # In theory, we need to use .train_inputs and .train_labels.
     pah_train_X = np.array(pah_data.model_inputs)
@@ -195,13 +203,13 @@ def create_import_data():
     pah_test_X = np.array(pah_data.test_inputs)
     pah_test_Y = np.array(pah_data.test_labels)
 
+    # Pesticides 
     pes_data_path = "./dataset/raw/pes"
-    pes_data = PAHRatio(pes_data_path, m=10, clustering_threshold=20, K=5, maxIt=100)
+    pes_data = PAHRatio(pes_data_path, m,windows_size, clustering_threshold, K, maxIt) 
     pes_data.process_files()
     pes_data.prepare_model_data(test_size=0) # No split for pes since they are all used for testing
     pes_X = np.array(pes_data.model_inputs)
     pes_Y = np.array(pes_data.model_labels)
-
     np.save("./dataset/seperate_test_data/pah/pah_train_X.npy", pah_train_X)
     np.save("./dataset/seperate_test_data/pah/pah_train_Y.npy", pah_train_Y)
     np.save("./dataset/seperate_test_data/pah/pah_test_X.npy", pah_test_X)
@@ -210,10 +218,11 @@ def create_import_data():
     np.save("./dataset/seperate_test_data/pes/pes_Y.npy", pes_Y)
 
 
-if __name__ == "__main__":
 
+def run():
+    
     # This is for creating data usable for models
-    create_import_data()
+    #create_import_data()
 
     """
     prev_data = PAHRatio('Data', m=10, clustering_threshold=20, K=5, maxIt=100)
@@ -235,7 +244,6 @@ if __name__ == "__main__":
     pes_X = np.load('./dataset/seperate_test_data/pes/pes_X.npy')
     pes_Y = np.load('./dataset/seperate_test_data/pes/pes_Y.npy')
 
-    # Normalization is key to great result
     dnn_X_train = train_X.reshape(train_X.shape[0], -1)
     dnn_X_pes = pes_X.reshape(pes_X.shape[0], -1)
     dnn_scaler = StandardScaler()
@@ -293,3 +301,20 @@ if __name__ == "__main__":
     drawing.text(xy=(10, 10), text=table_str, fill=(0, 0, 0))
     image.save("./fig/comparison_chart.png")
     """
+
+
+if __name__ == "__main__":
+    create_import_data(m = 10,windows_size = 1,clustering_threshold = 20,K = 5, maxIt =100)
+    run()
+    create_import_data(m = 10,windows_size = 50,clustering_threshold = 20,K = 5, maxIt =100)
+    run()
+    results_df.to_csv('learning_results_.csv', index=False)
+
+    create_import_data(m = 10,windows_size = 1,clustering_threshold = 20,K = 5, maxIt =100,baseline_removal = True)
+    run()
+    create_import_data(m = 10,windows_size = 50,clustering_threshold = 20,K = 5, maxIt =100,baseline_removal = True)
+    run()
+    results_df.to_csv('learning_results_withBaselineRemoval.csv', index=False)
+
+
+

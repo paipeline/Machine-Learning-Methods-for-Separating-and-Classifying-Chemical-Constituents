@@ -19,11 +19,11 @@ class PAHRatio:
     - model_labels (np.array): Numpy array to store the final labels for the model.
     """
 
-    def __init__(self, lib, m=10, clustering_threshold=20, window = 50, K=5, maxIt=100,prominence = 0.02):
+    def __init__(self, lib, m=10, clustering_threshold=20, windows_size = 50, K=5, maxIt=100,prominence = 0.02):
         """
         Initializes the PAHRatio class with the given parameters.
         """
-        self.window = window
+        self.window = windows_size
         self.lib = lib
         self.m = m
         self.clustering_threshold = clustering_threshold
@@ -138,5 +138,5 @@ class PAHRatio:
 
 # Example usage of the class
 if __name__ == '__main__':
-    pah_predictor = PAHRatio(lib='raw_dataset', m=10, clustering_threshold=20, K=5, maxIt=100, prominence =0.2,window = 50)
+    pah_predictor = PAHRatio(lib='raw_dataset', m=10, clustering_threshold=20, K=5, maxIt=100, prominence =0.2,windows_size = 50)
     pah_predictor.run()
