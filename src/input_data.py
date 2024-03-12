@@ -3,7 +3,7 @@ print("New current working directory:", os.getcwd())
 
 import numpy as np
 import re
-from src.preprocessor import Preprocessor
+from preprocessor import Preprocessor
 from sklearn.model_selection import train_test_split
 
 class PAHRatio:
@@ -19,7 +19,7 @@ class PAHRatio:
     - model_labels (np.array): Numpy array to store the final labels for the model.
     """
 
-    def __init__(self, lib, m=10, clustering_threshold=20, windows_size = 50, K=5, maxIt=100,prominence = 0.02):
+    def __init__(self, lib, m=10, clustering_threshold=20, windows_size = 50, K=5, maxIt=100,prominence = 0.02,baseline_removal =False):
         """
         Initializes the PAHRatio class with the given parameters.
         """
@@ -36,6 +36,7 @@ class PAHRatio:
         self.model_inputs = None
         self.model_labels = None
         self.prominence =prominence
+        self.baseline_removal = baseline_removal
 
     def seperate_letter_num(self, string):
         """
@@ -74,7 +75,7 @@ class PAHRatio:
         for file in os.listdir(self.lib):
             if file.endswith('.xlsx'):
                 file_path = os.path.join(self.lib, file)
-                pre_pro = Preprocessor(file_path, self.m, self.clustering_threshold, self.maxIt, self.K, self.prominence)
+                pre_pro = Preprocessor(file_path=file_path, m=self.m, threshold = self.clustering_threshold, mat_iteration= self.maxIt, window = self.window, prominence = self.prominence, baseline_removal = self.baseline_removal)
                 print(f"{file} gets processed successfully")
                 pooled_vectors = pre_pro.run()
 

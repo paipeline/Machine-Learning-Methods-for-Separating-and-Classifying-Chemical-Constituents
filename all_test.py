@@ -22,6 +22,7 @@ from src.input_data import PAHRatio
 RANDOM_SEED = 100
 np.random.seed(RANDOM_SEED)
 random.seed(RANDOM_SEED)
+metrics = {}
 #keras.utils.set_random_seed(RANDOM_SEED)
 
 def custom_loss(y_true, y_pred):
@@ -43,15 +44,15 @@ comparing, and tuning. It is now deterministic, which means for given input, the
 the same ending state and produce the same testing result.
 """
 
-def get_cnn_model():
+def get_cnn_model(*args):
     # Fix initial weights to make results reproducible
     weight_initializer = keras.initializers.GlorotUniform(seed=RANDOM_SEED)
     # This model is already updated to the newest
-    cnn_model = Sequential([
+    cnn_model = Sequential([ 
         layers.Conv1D(filters=400, kernel_size=2, activation='tanh',
-                      input_shape=(train_X.shape[1], train_X.shape[2]), kernel_initializer=weight_initializer,
+                      input_shape=(args[0].shape[1], args[0].shape[2]), kernel_initializer=weight_initializer,
                       bias_initializer=initializers.Zeros()),
-        layers.MaxPooling1D(pool_size=2),
+        layers.MaxPooling1D(pool_size=2), 
         layers.BatchNormalization(),
         layers.Conv1D(filters=200, activation='tanh', kernel_size=3, kernel_initializer=weight_initializer,
                       bias_initializer=initializers.Zeros()),
@@ -74,11 +75,12 @@ def get_cnn_model():
 
     return cnn_model
 
-def get_rf_model():
+def get_rf_model(*args):
     random_forest = RandomForestRegressor(n_estimators=10, random_state=RANDOM_SEED)
     return random_forest
 
-def get_dnn_model():
+def get_dnn_model(*args):
+    dnn_X_train = args[0]
     # Fix initial weights to make results reproducible
     weight_initializer = keras.initializers.GlorotUniform(seed=RANDOM_SEED)
     dnn_model = Sequential([
@@ -100,25 +102,12 @@ def get_dnn_model():
 
     return dnn_model
 
-def get_svr_model():
+def get_svr_model(*args):
     svr_model = MultiOutputRegressor(SVR(kernel='rbf'))
     return svr_model
 
 
 
-
-def plot_metrics(metric_name, data):
-    plt.figure(figsize=(10, 6))
-    for model_name, metric in data.items():
-        plt.plot(metric[metric_name], label = f"{model_name} - {metric_name}")
-
-    plt.title(f"{metric_name} for models")
-    plt.xlabel("folds")
-    plt.ylabel(metric_name)
-    plt.grid()
-    plt.legend()
-    plt.savefig(f"{metric_name}.png")
-    plt.show()
 
 
 def print_metrics(mae, mse, model_name, r2, err):
@@ -131,19 +120,73 @@ def print_metrics(mae, mse, model_name, r2, err):
     results_df = pd.DataFrame(columns=['Model', 'MAE', 'MSE', 'R2', 'ErrorRate'])
 
 
+def final_test(model_name):
+    train_X = np.load('./dataset/seperate_test_data/pah/pah_train_X.npy')
+    train_Y = np.load('./dataset/seperate_test_data/pah/pah_train_Y.npy')
+    test_X = np.load('./dataset/seperate_test_data/pah/pah_test_X.npy')
+    test_Y = np.load('./dataset/seperate_test_data/pah/pah_test_Y.npy')
+    pes_X = np.load('./dataset/seperate_test_data/pes/pes_X.npy')
+    pes_Y = np.load('./dataset/seperate_test_data/pes/pes_Y.npy')
+
+    dnn_X_train = train_X.reshape(train_X.shape[0], -1)
+    dnn_X_pes = pes_X.reshape(pes_X.shape[0], -1)
+    dnn_test_x = test_X.reshape(test_X.shape[0], -1)
+    dnn_scaler = StandardScaler()
+    dnn_scaler.fit(dnn_X_train) 
+    dnn_X_train = dnn_scaler.transform(dnn_X_train)
+    dnn_X_pes = dnn_scaler.transform(dnn_X_pes)
+    dnn_X_test = dnn_scaler.transform(dnn_test_x)
+
+    # This section reshapes 3D data for cnn input into 2D to fit into a standard scalar
+    # and then the input is reshaped back into its original shape
+    cnn_input_reshape = train_X.reshape(train_X.shape[0], -1)
+    cnn_test_input_reshape = test_X.reshape(test_X.shape[0], -1)
+    cnn_pes = pes_X.reshape(pes_X.shape[0], -1)
+    # print(np.array(cnn_input_reshape).shape)
+    cnn_scalar = StandardScaler()
+    cnn_scalar.fit_transform(cnn_input_reshape)
+    cnn_scalar.transform(cnn_test_input_reshape)
+    cnn_train_input = np.array(cnn_input_reshape).reshape(train_X.shape)
+    cnn_test_input = np.array(np.array(cnn_test_input_reshape).reshape(test_X.shape))
+    cnn_pes_input = np.array(np.array(cnn_pes).reshape(pes_X.shape))
+    
+    model = get_cnn_model(cnn_train_input) if model_name == "CNN" else get_dnn_model(dnn_X_train) if model_name == "DNN" else get_svr_model(dnn_X_train) if model_name == "SVR" else get_rf_model(dnn_X_train)
+    if model_name == "CNN" or model_name == "DNN":
+        model.fit(train_X, train_Y, epochs=50, batch_size=4)
+    else:
+        model.fit(train_X, train_Y)
+
+    prediction_pah = model.predict(test_X)
+    prediction_pes = model.predict(pes_X)
+    rounded_pah_prediction = np.round(prediction_pah)
+    rounded_pes_prediction = np.round(prediction_pes)
+    pah_error = np.mean(np.abs(rounded_pah_prediction - test_Y) > 0)
+    pes_error = np.mean(np.abs(rounded_pes_prediction - pes_Y) > 0)
+
+    precise_difference_pah_test = np.sum(np.abs(prediction_pah - test_Y))
+    precise_difference_pes_test = np.sum(np.abs(prediction_pes - pes_Y))
+
+    # load metrics into a dictionary to be used for plotting later
+    metrics[model_name] = [pah_error, pes_error, precise_difference_pah_test, precise_difference_pes_test]
+    print("**********************************")
+    print(f"pah Error Rate of {model_name}: {pah_error}")
+    print(f"pes Error Rate of {model_name}: {pes_error}")
+    print(f"The exact error amount of pah test data accross all data of {model_name}: {precise_difference_pah_test}")
+    print(f"The exact error amount of pes test data accross all data of {model_name}: {precise_difference_pes_test}")
+    print("**********************************")
 
 def perform_kfold_cv(X, Y, get_model, model_name, pes_x, pex_y, k=5):
     kf = KFold(n_splits=k, shuffle=True, random_state=30)
     maes, r2s, mses, err = [], [], [], []
     add_maes, add_r2s, add_mses, add_err = [], [], [], []
 
-    for train_index, text_index in kf.split(X):
-        X_train, X_test = X[train_index], X[text_index]
-        y_train, y_test = Y[train_index], Y[text_index]
+    for train_index, test_index in kf.split(X):
+        X_train, X_test = X[train_index], X[test_index]
+        y_train, y_test = Y[train_index], Y[test_index]
         model = get_model()
 
         if model_name == "CNN" or model_name == "DNN":
-            model.fit(X_train, y_train, epochs=50, batch_size=5)
+            model.fit(X_train, y_train, epochs=50, batch_size=4)
         else:
             model.fit(X_train, y_train)
 
@@ -189,16 +232,16 @@ def perform_kfold_cv(X, Y, get_model, model_name, pes_x, pex_y, k=5):
 This is using our original hyperparameters. Future improvements can be made by fine tuning these parameters.
 This is preprocessed with rolling windows and without baseline-removal.
 """
-def create_import_data(m = 10,windows_size = 50,clustering_threshold = 20,K = 5, maxIt =100):
+def create_import_data(m = 10,windows_size = 50,clustering_threshold = 20,K = 5, maxIt =100,baseline_removal = True):
     # PAH
     pah_data_path = "./dataset/raw/pah"
-    pah_data = PAHRatio(pah_data_path, m,windows_size, clustering_threshold, K, maxIt)
+    pah_data = PAHRatio(pah_data_path, m,windows_size, clustering_threshold, K, maxIt, baseline_removal)
     pah_data.process_files()
     pah_data.prepare_model_data()
     # Here I am using model_inputs (with no portion left out) to reproduce results from previous attempts.
     # In theory, we need to use .train_inputs and .train_labels.
-    pah_train_X = np.array(pah_data.model_inputs)
-    pah_train_Y = np.array(pah_data.model_labels)
+    pah_train_X = np.array(pah_data.train_inputs)
+    pah_train_Y = np.array(pah_data.train_labels)
     # TODO Need to be adjusted to use the training set for comparing preprocessing steps.
     pah_test_X = np.array(pah_data.test_inputs)
     pah_test_Y = np.array(pah_data.test_labels)
@@ -218,9 +261,55 @@ def create_import_data(m = 10,windows_size = 50,clustering_threshold = 20,K = 5,
     np.save("./dataset/seperate_test_data/pes/pes_Y.npy", pes_Y)
 
 
+def plot_results(metrics):
+    # Error Rates Plot
+    plt.figure(figsize=(12, 6))
+    model_names = list(metrics.keys())
+    pah_errors = [metrics[model]['pah_error'] for model in model_names]
+    pes_errors = [metrics[model]['pes_error'] for model in model_names]
+    
+    x = list(range(len(model_names)))  # the label locations
+    width = 0.35  # the width of the bars
+
+    fig, ax = plt.subplots()
+    rects1 = ax.bar([i - width/2 for i in x], pah_errors, width, label='PAH Error')
+    rects2 = ax.bar([i + width/2 for i in x], pes_errors, width, label='Pesticide Error')
+
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_ylabel('Error Rates')
+    ax.set_title('Error Rates by Model and Data Type')
+    ax.set_xticks(x)
+    ax.set_xticklabels(model_names)
+    ax.legend()
+    fig.tight_layout()
+    
+    plt.savefig("temp_error_rates.png")  # Save the plot to the current working directory
+    plt.show()
+
+    # Precise Differences Plot
+    plt.figure(figsize=(12, 6))
+    pah_precise_differences = [metrics[model]['pah_precise_difference'] for model in model_names]
+    pes_precise_differences = [metrics[model]['pes_precise_difference'] for model in model_names]
+
+    fig, ax = plt.subplots()
+    rects1 = ax.bar([i - width/2 for i in x], pah_precise_differences, width, label='PAH Precise Difference')
+    rects2 = ax.bar([i + width/2 for i in x], pes_precise_differences, width, label='Pesticide Precise Difference')
+
+    ax.set_ylabel('Precise Differences')
+    ax.set_title('Precise Differences by Model and Data Type')
+    ax.set_xticks(x)
+    ax.set_xticklabels(model_names)
+    ax.legend()
+
+    fig.tight_layout()
+
+    plt.savefig("temp_precise_differences.png")  # Save the plot to the current working directory
+    plt.show()
+
+
+
 
 def run():
-    
     # This is for creating data usable for models
     #create_import_data()
 
@@ -244,42 +333,47 @@ def run():
     pes_X = np.load('./dataset/seperate_test_data/pes/pes_X.npy')
     pes_Y = np.load('./dataset/seperate_test_data/pes/pes_Y.npy')
 
+    # Normalization is key to great result
     dnn_X_train = train_X.reshape(train_X.shape[0], -1)
     dnn_X_pes = pes_X.reshape(pes_X.shape[0], -1)
+    dnn_test_x = test_X.reshape(test_X.shape[0], -1)
     dnn_scaler = StandardScaler()
     dnn_scaler.fit(dnn_X_train) 
     dnn_X_train = dnn_scaler.transform(dnn_X_train)
     dnn_X_pes = dnn_scaler.transform(dnn_X_pes)
+    dnn_X_test = dnn_scaler.transform(dnn_test_x)
 
     # This section reshapes 3D data for cnn input into 2D to fit into a standard scalar
     # and then the input is reshaped back into its original shape
     cnn_input_reshape = train_X.reshape(train_X.shape[0], -1)
-    cnn_pes_input_reshape = test_X.reshape(test_X.shape[0], -1)
+    cnn_test_input_reshape = test_X.reshape(test_X.shape[0], -1)
+    cnn_pes = pes_X.reshape(pes_X.shape[0], -1)
     # print(np.array(cnn_input_reshape).shape)
     cnn_scalar = StandardScaler()
     cnn_scalar.fit_transform(cnn_input_reshape)
-    cnn_scalar.transform(cnn_pes_input_reshape)
+    cnn_scalar.transform(cnn_test_input_reshape)
     cnn_train_input = np.array(cnn_input_reshape).reshape(train_X.shape)
-    cnn_pes_input = np.array(np.array(cnn_pes_input_reshape).reshape(test_X.shape))
+    cnn_test_input = np.array(np.array(cnn_test_input_reshape).reshape(test_X.shape))
+    cnn_pes_input = np.array(np.array(cnn_pes).reshape(pes_X.shape))
 
+    return cnn_train_input, train_Y, cnn_test_input, test_Y, cnn_pes_input, pes_Y, dnn_X_train, train_Y, dnn_X_test, test_Y, dnn_X_pes, pes_Y
+
+    """
     model_metrics = {}
     # model_metric["U"] = perform_kfold_cv(dnn_X_train, train_Y,get_unet_model,"U-net",dnn_X_test,test_Y)
 
-    model_metrics['CNN'] = perform_kfold_cv(cnn_train_input, train_Y, get_cnn_model, "CNN", pes_X, pes_Y)
+    model_metrics['CNN'] = perform_kfold_cv(cnn_train_input, train_Y, get_cnn_model, "CNN", cnn_pes_input, pes_Y)
     model_metrics['DNN'] = perform_kfold_cv(dnn_X_train, train_Y, get_dnn_model, "DNN", dnn_X_pes, pes_Y)
     model_metrics['SVR'] = perform_kfold_cv(dnn_X_train, train_Y, get_svr_model, "SVR", dnn_X_pes, pes_Y)
     model_metrics['RF'] = perform_kfold_cv(dnn_X_train, train_Y, get_rf_model, "RF", dnn_X_pes, pes_Y)
     keys = model_metrics['CNN'].keys()
-    """
     for key in keys:
         plot_metrics(key, model_metrics)
-    """
 
     # For producing the comparison table, the result we previously had is using all data to do k-fold, lefting out
     # no testing data.
     # TODO Comparing preprocessing w or w/o baseline_removal & w or w/o rolling window
 
-    """
     col_names = model_metrics['CNN'].keys()
     table = PrettyTable()
     table.field_names = np.hstack((np.array(['model_name']), np.array(list(col_names))))
@@ -293,7 +387,7 @@ def run():
         model_name = [model[0]]
         model_name.extend(avg_metrics)
         table.add_row(model_name)
-
+ 
     # This is to put the table into an image
     table_str = table.get_string()
     image = Image.new('RGB', (1000, 300), color=(255, 255, 255))
@@ -318,3 +412,9 @@ if __name__ == "__main__":
 
 
 
+
+    final_test(cnn_train_input, train_Y, cnn_test_input, test_Y, cnn_pes_input, pes_Y, get_cnn_model(), "CNN")
+    final_test(dnn_X_train, train_Y, dnn_X_test, test_Y, dnn_X_pes, pes_Y, get_dnn_model(), "DNN")
+    final_test(dnn_X_train, train_Y, dnn_X_test, test_Y, dnn_X_pes, pes_Y, get_svr_model(), "SVR")
+    final_test(dnn_X_train, train_Y, dnn_X_test, test_Y, dnn_X_pes, pes_Y, get_rf_model(), "RF")
+    plot_results(metrics)
