@@ -1,5 +1,3 @@
-# This file is used to show 10*4 comparison with raw, sliced from 350 - 2000, baselined_removed, and normalized
-# not a Jupytor notebook because I don't have PyCharm Professional :(
 import os
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -16,7 +14,7 @@ dir = '../raw_dataset' # change this as needed
 #print(os.listdir('../raw_dataset'))
 files = ['SERS 1BaP+2ANTH.xlsx', 'SERS 2ANTH+1PYR.xlsx', 'SERS 1BaP+1PYR.xlsx', 'ImidaclopridTapwaterdata.xlsx',
          'SERS 1ANTH+1PYR+1BaP+2BaA.xlsx', 'SERS 1BaP+2BaA.xlsx', 'SERS 1ANTH+2PYR+1BaP+1BaA.xlsx',
-         'SERS 5ANTH+1PYR.xlsx', 'SERS 2ANTH+1PYR+1BaP+1BaA.xlsx', 'SERS BaA.xlsx']
+         'SERS 5ANTH+1PYR.xlsx', 'SERS 2ANTH+1PYR+1BaP+1BaA.xlsx', 'SERS BaA.xlsx'] # change the dataset as needed as well
 for file in os.listdir(dir):
     if file in files:
         file_path = os.path.join(dir, file)
@@ -29,7 +27,7 @@ for file in os.listdir(dir):
         raw_data.append([raw_x, single_raw_y])
 
 # Ploting
-plt.figure(figsize=(100, 50)) # Adjust this figsize as needed
+plt.figure(figsize=(100, 50))
 plt.suptitle('Raw / Sliced / BaselineRemoved / Normalized')
 
 for i, (raw_x, raw_y) in enumerate(raw_data, start=1):
@@ -39,10 +37,6 @@ for i, (raw_x, raw_y) in enumerate(raw_data, start=1):
     plt.xlabel('xVal')
     plt.ylabel('yVal')
     plt.grid(True)
-
-
-
-# Now is slicing
 
 sliced_data = []
 for (xval, yval) in raw_data:
@@ -67,7 +61,7 @@ for val in sliced_data:
     baseObj = BaselineRemoval(y)
     baseline_removed_y = baseObj.ZhangFit()
     baseline_removed_data.append([x, baseline_removed_y])
-
+    
 for i, (x, y) in enumerate(baseline_removed_data, start=1):
     plt.subplot(10, 4, 4*i - 1)
     plt.plot(x, y)
@@ -95,6 +89,11 @@ for i, (x, y) in enumerate(normalized_val, start=1):
 plt.tight_layout(rect=[0, 0, 1, 0.98])
 plt.savefig('../fig/Comparison RAW SLICED BASELINE_REMOVED NORMALIZED')
 plt.show()
+
+
+
+
+#1. make excel file
 
 
 
