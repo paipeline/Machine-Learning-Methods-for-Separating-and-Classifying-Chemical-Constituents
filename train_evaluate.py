@@ -87,6 +87,7 @@ def plot_predictions_vs_actual(y_true, y_pred, title):
     plt.title(title)
     plt.plot([y_true.min(), y_true.max()], [y_true.min(), y_true.max()], 'k--', lw=2)  # Reference line
     plt.show()
+    
 def plot_learning_curve(losses, title, ylabel='Loss', xlabel='Epochs'):
     plt.figure(figsize=(10, 6))
     plt.plot(losses, label='Training Loss')

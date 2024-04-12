@@ -3,7 +3,7 @@ print("New current working directory:", os.getcwd())
 
 import numpy as np
 import re
-from preprocessor import Preprocessor
+from src.preprocessor import Preprocessor
 from sklearn.model_selection import train_test_split
 
 class PAHRatio:

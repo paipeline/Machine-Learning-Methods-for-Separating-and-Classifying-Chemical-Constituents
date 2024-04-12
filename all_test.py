@@ -71,7 +71,7 @@ def get_cnn_model(*args):
     ])
     optimizer = keras.optimizers.Adam(learning_rate=0.0001)
 
-    cnn_model.compile(optimizer=optimizer, loss=custom_loss, metrics=['accuracy'])
+    cnn_model.compile(optimizer=optimizer, loss='mse', metrics=['accuracy'])
 
     return cnn_model
 
@@ -339,9 +339,14 @@ def run():
     dnn_test_x = test_X.reshape(test_X.shape[0], -1)
     dnn_scaler = StandardScaler()
     dnn_scaler.fit(dnn_X_train) 
+    
     dnn_X_train = dnn_scaler.transform(dnn_X_train)
     dnn_X_pes = dnn_scaler.transform(dnn_X_pes)
     dnn_X_test = dnn_scaler.transform(dnn_test_x)
+
+
+
+    print("==================================")
 
     # This section reshapes 3D data for cnn input into 2D to fit into a standard scalar
     # and then the input is reshaped back into its original shape

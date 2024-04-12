@@ -24,6 +24,31 @@ np.random.seed(RANDOM_SEED)
 random.seed(RANDOM_SEED)
 #keras.utils.set_random_seed(RANDOM_SEED)
 class evaluator:
+    """
+    evaluator class to evaluate different machine learning models on environmental data sets, specifically focusing on PAH and pesticide measurements.
+    Attributes:
+        params (dict): A dictionary of parameters for data preprocessing and model configuration.
+        metrics (dict): A dictionary to store evaluation metrics for each model tested.
+        train_X (np.ndarray): Training data set features for PAH.
+        train_Y (np.ndarray): Training data set labels for PAH.
+        test_X (np.ndarray): Test data set features for PAH.
+        test_Y (np.ndarray): Test data set labels for PAH.
+        pes_X (np.ndarray): Data set features for pesticide analysis.
+        pes_Y (np.ndarray): Data set labels for pesticide analysis.
+        dnn_X_train, dnn_X_pes, dnn_X_test (np.ndarray): Scaled datasets for DNN model training, pesticide analysis, and testing.
+        cnn_train_input, cnn_test_input, cnn_pes_input (np.ndarray): Scaled datasets reshaped for CNN model training, testing, and pesticide analysis.
+
+    Methods:
+        custom_loss(y_true, y_pred): Custom loss function penalizing overestimations.
+        get_cnn_model(): Builds and compiles a CNN model for the given data.
+        get_rf_model(): Returns a Random Forest Regressor model.
+        get_dnn_model(): Builds and compiles a DNN model for the given data.
+        get_svr_model(): Returns a MultiOutputRegressor with SVR as the estimator.
+        final_test(model_name): Tests a specified model on the test and pesticide datasets and prints evaluation metrics.
+        perform_kfold_cv(X, Y, get_model, model_name, pes_x, pex_y, k=5): Performs k-fold cross-validation for a given model and prints aggregated metrics.
+        create_import_data(m, windows_size, clustering_threshold, K, maxIt, baseline_removal): Processes and prepares the PAH and pesticide data for modeling.
+        plot_results(): Generates and saves plots comparing the error rates and precise differences for each model.
+    """
     def __init__(self, **kwargs):
         # Default parameter values
         default_params = {
@@ -32,22 +57,28 @@ class evaluator:
             'clustering_threshold': 20,
             'K': 5,
             'maxIt': 100,
-            'baseline_removal': True
+            'baseline_removal': True,
+            'preprocessing': True
         }
-        
-        
+        self.loss_functions = [
+            'mean_squared_error',
+            'mean_absolute_error',
+            self.custom_loss,
+        ]
+
         # Update defaults with any kwargs provided
         self.params = {**default_params, **kwargs}
         
-        if kwargs:  # If there are any keyword arguments
+        if kwargs["preprocessing"]:  # start preprocessing when the parameter is set to True
             self.create_import_data(
                 m=self.params['m'],
-                windows_size=self.params['windows_size'],
+                windows_size= self.params['windows_size'],
                 clustering_threshold=self.params['clustering_threshold'],
                 K=self.params['K'],
                 maxIt=self.params['maxIt'],
                 baseline_removal=self.params['baseline_removal']
             )
+
         self.metrics = {}
         # Load the data
         self.train_X = np.load('./dataset/seperate_test_data/pah/pah_train_X.npy')
@@ -56,15 +87,31 @@ class evaluator:
         self.test_Y = np.load('./dataset/seperate_test_data/pah/pah_test_Y.npy')
         self.pes_X = np.load('./dataset/seperate_test_data/pes/pes_X.npy')
         self.pes_Y = np.load('./dataset/seperate_test_data/pes/pes_Y.npy')
+        print('size of train_X:', self.train_X.shape)
+        print('size of train_Y:', self.train_Y.shape)
+        print('size of test_X:', self.test_X.shape)
+        print('size of test_Y:', self.test_Y.shape)
+        print('size of pes_X:', self.pes_X.shape)
+        print('size of pes_Y:', self.pes_Y.shape)
 
+
+        # Scale the data
         self.dnn_X_train = self.train_X.reshape(self.train_X.shape[0], -1)
         self.dnn_X_pes = self.pes_X.reshape(self.pes_X.shape[0], -1)
         self.dnn_test_x = self.test_X.reshape(self.test_X.shape[0], -1)
-        self.dnn_scaler = StandardScaler()
-        self.dnn_scaler.fit(self.dnn_X_train) 
-        self.dnn_X_train = self.dnn_scaler.transform(self.dnn_X_train)
-        self.dnn_X_pes = self.dnn_scaler.transform(self.dnn_X_pes)
-        self.dnn_X_test = self.dnn_scaler.transform(self.dnn_test_x)
+
+
+        self.scaler = StandardScaler()
+        self.scaler.fit(self.dnn_X_train) 
+        self.dnn_X_train = self.scaler.transform(self.dnn_X_train)
+        self.dnn_X_test = self.scaler.transform(self.dnn_test_x)
+
+        self.pes_scaler = StandardScaler()
+        self.pes_scaler.fit(self.dnn_X_pes)
+        self.dnn_X_pes = self.pes_scaler.transform(self.dnn_X_pes)
+
+
+
         # This section reshapes 3D data for cnn input into 2D to fit into a standard scalar
         # and then the input is reshaped back into its original shape
         self.cnn_input_reshape = self.train_X.reshape(self.train_X.shape[0], -1)
@@ -78,13 +125,23 @@ class evaluator:
         self.cnn_test_input = np.array(np.array(self.cnn_test_input_reshape).reshape(self.test_X.shape))
         self.cnn_pes_input = np.array(np.array(self.cnn_pes).reshape(self.pes_X.shape))
         
-    def custom_loss(self,y_true, y_pred):
-        # This is a hyperparameter to be tunned
-        overestimation_penalty_coefficient = 30
-        error = float(y_pred) - float(y_true)
-        loss = backend.square(error)
-        over_penalty_loss = overestimation_penalty_coefficient * loss
-        return backend.mean(backend.switch(error > 0, over_penalty_loss, loss), axis=-1)
+
+    def custom_loss(y_true, y_pred):
+        """
+        Custom loss function for ordinal classification that applies a heavier penalty for overestimations.
+        """
+        overestimation_penalty_coefficient = 30.0
+        error = y_pred - y_true
+        squared_error = tf.square(error)
+        
+        # Apply a heavier penalty for overestimations
+        over_penalty_loss = squared_error * overestimation_penalty_coefficient
+        
+        # Use tf.where to apply over_penalty_loss only where the prediction exceeds the true value
+        loss = tf.where(error > 0, over_penalty_loss, squared_error)
+        
+        # Taking the mean across the batch
+        return tf.reduce_mean(loss, axis=-1)
 
         """ This is not working since it is non-differentiable
         def custom_activation(x):
@@ -98,7 +155,13 @@ class evaluator:
         """
 
     def get_cnn_model(self):
-        # Fix initial weights to make results reproducible
+        """
+        Constructs a Convolutional Neural Network (CNN) model with predefined architecture and compiles it.
+        
+        Returns:
+            Sequential: A compiled Keras CNN model.
+        """
+            # Fix initial weights to make results reproducible
         weight_initializer = keras.initializers.GlorotUniform(seed=RANDOM_SEED)
         # This model is already updated to the newest
         cnn_model = Sequential([ 
@@ -107,7 +170,7 @@ class evaluator:
                         bias_initializer=initializers.Zeros()),
             layers.MaxPooling1D(pool_size=2), 
             layers.BatchNormalization(),
-            layers.Conv1D(filters=200, activation='tanh', kernel_size=3, kernel_initializer=weight_initializer,
+            layers.Conv1D(filters=200, activation='tanh', kernel_size=3,padding = 'same', kernel_initializer=weight_initializer,
                         bias_initializer=initializers.Zeros()),
             layers.MaxPooling1D(pool_size=2),
             layers.BatchNormalization(),
@@ -124,7 +187,7 @@ class evaluator:
         ])
         optimizer = keras.optimizers.Adam(learning_rate=0.0001)
 
-        cnn_model.compile(optimizer=optimizer, loss=self.custom_loss, metrics=['accuracy'])
+        cnn_model.compile(optimizer=optimizer, loss='mean_absolute_error', metrics=['accuracy'])
 
         return cnn_model
 
@@ -150,7 +213,7 @@ class evaluator:
             layers.Dense(4, activation='relu', kernel_initializer=weight_initializer,
                         bias_initializer=initializers.Zeros())
         ])
-        dnn_model.compile(optimizer='adam', loss=self.custom_loss, metrics=['accuracy'])
+        dnn_model.compile(optimizer='adam', loss=evaluator.custom_loss, metrics=['accuracy'])
 
         return dnn_model
 
@@ -173,31 +236,53 @@ class evaluator:
 
 
     def final_test(self,model_name):
-        
-        model = self.get_cnn_model() if model_name == "CNN" else self.get_dnn_model() if model_name == "DNN" else self.get_svr_model() if model_name == "SVR" else self.get_rf_model()
-        if model_name == "CNN":
-            model.fit(self.cnn_train_input, self.train_Y, epochs=50, batch_size=4)
-            prediction_pah = model.predict(self.cnn_test_input)
-            prediction_pes = model.predict(self.cnn_pes_input)
-        elif model_name == "DNN":
-            model.fit(self.dnn_X_train, self.train_Y, epochs=50, batch_size=4)
-            prediction_pah = model.predict(self.dnn_X_test)
-            prediction_pes = model.predict(self.dnn_X_pes)
-        else:
-            model.fit(self.dnn_X_train, self.train_Y)
-            prediction_pah = model.predict(self.dnn_X_test)
-            prediction_pes = model.predict(self.dnn_X_pes)
+        train_X = np.load('./dataset/seperate_test_data/pah/pah_train_X.npy')
+        train_Y = np.load('./dataset/seperate_test_data/pah/pah_train_Y.npy')
+        test_X = np.load('./dataset/seperate_test_data/pah/pah_test_X.npy')
+        test_Y = np.load('./dataset/seperate_test_data/pah/pah_test_Y.npy')
+        pes_X = np.load('./dataset/seperate_test_data/pes/pes_X.npy')
+        pes_Y = np.load('./dataset/seperate_test_data/pes/pes_Y.npy')
 
+        dnn_X_train = train_X.reshape(train_X.shape[0], -1)
+        dnn_X_pes = pes_X.reshape(pes_X.shape[0], -1)
+        dnn_test_x = test_X.reshape(test_X.shape[0], -1)
+        dnn_scaler = StandardScaler()
+        dnn_scaler.fit(dnn_X_train) 
+        dnn_X_train = dnn_scaler.transform(dnn_X_train)
+        dnn_X_pes = dnn_scaler.transform(dnn_X_pes)
+        dnn_X_test = dnn_scaler.transform(dnn_test_x)
+
+        # This section reshapes 3D data for cnn input into 2D to fit into a standard scalar
+        # and then the input is reshaped back into its original shape
+        cnn_input_reshape = train_X.reshape(train_X.shape[0], -1)
+        cnn_test_input_reshape = test_X.reshape(test_X.shape[0], -1)
+        cnn_pes = pes_X.reshape(pes_X.shape[0], -1)
+        # print(np.array(cnn_input_reshape).shape)
+        cnn_scalar = StandardScaler()
+        cnn_scalar.fit_transform(cnn_input_reshape)
+        cnn_scalar.transform(cnn_test_input_reshape)
+        cnn_train_input = np.array(cnn_input_reshape).reshape(train_X.shape)
+        cnn_test_input = np.array(np.array(cnn_test_input_reshape).reshape(test_X.shape))
+        cnn_pes_input = np.array(np.array(cnn_pes).reshape(pes_X.shape))
+        
+        model = get_cnn_model(cnn_train_input) if model_name == "CNN" else get_dnn_model(dnn_X_train) if model_name == "DNN" else get_svr_model(dnn_X_train) if model_name == "SVR" else get_rf_model(dnn_X_train)
+        if model_name == "CNN" or model_name == "DNN":
+            model.fit(train_X, train_Y, epochs=50, batch_size=4)
+        else:
+            model.fit(train_X, train_Y)
+
+        prediction_pah = model.predict(test_X)
+        prediction_pes = model.predict(pes_X)
         rounded_pah_prediction = np.round(prediction_pah)
         rounded_pes_prediction = np.round(prediction_pes)
-        pah_error = np.mean(np.abs(rounded_pah_prediction - self.test_Y) > 0)
-        pes_error = np.mean(np.abs(rounded_pes_prediction - self.pes_Y) > 0)
-        precise_difference_pah_test = np.sum(np.abs(prediction_pah - self.test_Y))
-        precise_difference_pes_test = np.sum(np.abs(prediction_pes - self.pes_Y))
-        if model_name not in self.metrics:
-            self.metrics[model_name] = {'pah_error': pah_error, 'pes_error': pes_error, 'precise_difference_pah': precise_difference_pah_test, 'precise_difference_pes': precise_difference_pes_test}
-                
+        pah_error = np.mean(np.abs(rounded_pah_prediction - test_Y) > 0)
+        pes_error = np.mean(np.abs(rounded_pes_prediction - pes_Y) > 0)
+
+        precise_difference_pah_test = np.sum(np.abs(prediction_pah - test_Y))
+        precise_difference_pes_test = np.sum(np.abs(prediction_pes - pes_Y))
+
         # load metrics into a dictionary to be used for plotting later
+        metrics[model_name] = [pah_error, pes_error, precise_difference_pah_test, precise_difference_pes_test]
         print("**********************************")
         print(f"pah Error Rate of {model_name}: {pah_error}")
         print(f"pes Error Rate of {model_name}: {pes_error}")
@@ -205,6 +290,8 @@ class evaluator:
         print(f"The exact error amount of pes test data accross all data of {model_name}: {precise_difference_pes_test}")
         print("**********************************")
 
+
+    # TODO: This function is not working as expected.
     def perform_kfold_cv(self,X, Y, get_model, model_name, pes_x, pex_y, k=5):
         kf = KFold(n_splits=k, shuffle=True, random_state=30)
         maes, r2s, mses, err = [], [], [], []
@@ -260,10 +347,15 @@ class evaluator:
 
     """
     This is using our original hyperparameters. Future improvements can be made by fine tuning these parameters.
-    This is preprocessed with rolling windows and without baseline-removal.
     """
-    def create_import_data(self, m = 10,windows_size = 50,clustering_threshold = 20,K = 5, maxIt =100,baseline_removal = True):
-        # PAH
+    def create_import_data(self, m = 10,windows_size = 1,clustering_threshold = 20,K = 5, maxIt =100,baseline_removal = True):
+        """
+        Processes and prepares the PAH and pesticide data for modeling based on the specified parameters.
+        
+        Parameters:
+            m, windows_size, clustering_threshold, K, maxIt (int): Parameters for data processing and feature extraction.
+            baseline_removal (bool): Whether to perform baseline removal on the datasets.
+        """
         pah_data_path = "./dataset/raw/pah"
         pah_data = PAHRatio(pah_data_path, m,windows_size, clustering_threshold, K, maxIt, baseline_removal)
         pah_data.process_files()
@@ -276,7 +368,7 @@ class evaluator:
         pah_test_X = np.array(pah_data.test_inputs)
         pah_test_Y = np.array(pah_data.test_labels)
 
-        # Pesticides 
+        # Pesticides
         pes_data_path = "./dataset/raw/pes"
         pes_data = PAHRatio(pes_data_path, m,windows_size, clustering_threshold, K, maxIt) 
         pes_data.process_files()
@@ -292,28 +384,31 @@ class evaluator:
 
 
     def plot_results(self):
+        """
+        Generates and saves plots comparing the error rates and precise differences for each model.
+        """
         # Error Rates Plot
         plt.figure(figsize=(12, 6))
         model_names = list(self.metrics.keys())
-        pah_errors = [self.metrics[model]['pah_error'] for model in model_names]
-        pes_errors = [self.metrics[model]['pes_error'] for model in model_names]
+        test_pah_errors = [self.metrics[model]['test_pah_error'] for model in model_names]
+        test_pes_errors = [self.metrics[model]['test_pes_error'] for model in model_names]
         
         x = list(range(len(model_names)))  # the label locations
         width = 0.35  # the width of the bars
 
         fig, ax = plt.subplots()
-        rects1 = ax.bar([i - width/2 for i in x], pah_errors, width, label='PAH Error')
-        rects2 = ax.bar([i + width/2 for i in x], pes_errors, width, label='Pesticide Error')
+        rects1 = ax.bar([i - width/2 for i in x], test_pah_errors, width, label='PAH Error')
+        rects2 = ax.bar([i + width/2 for i in x], test_pes_errors, width, label='Pesticide Error')
 
         # Add some text for labels, title and custom x-axis tick labels, etc.
-        ax.set_ylabel('Error Rates')
-        ax.set_title('Error Rates by Model and Data Type')
+        ax.set_ylabel('Test Error Rates')
+        ax.set_title('Error Rates by Model and Data Type in test set')
         ax.set_xticks(x)
         ax.set_xticklabels(model_names)
         ax.legend()
         fig.tight_layout()
         
-        plt.savefig("temp_error_rates.png")  # Save the plot to the current working directory
+        plt.savefig("temp_test_error_rates.png")  # Save the plot to the current working directory
         plt.show()
 
         # Precise Differences Plot
@@ -333,5 +428,30 @@ class evaluator:
 
         fig.tight_layout()
 
-        plt.savefig("temp_precise_differences.png")  # Save the plot to the current working directory
+        plt.savefig("temp_test_precise_differences.png")  # Save the plot to the current working directory
         plt.show()
+
+
+# Default parameters:
+# default_params = {
+#     'm': 10,
+#     'windows_size': 50,
+#     'clustering_threshold': 20,
+#     'K': 5,
+#     'maxIt': 100,
+#     'baseline_removal': True,
+#     'preprocessing': True
+# }
+
+
+# Test models without preprocessing
+ev1 = evaluator(m = 10,windows_size = 1,clustering_threshold = 20,K = 5, maxIt =100,baseline_removal = True,preprocessing = False)
+ev1.final_test("CNN")
+ev1.final_test("DNN")
+ev1.final_test("SVR")
+ev1.final_test("RF")
+ev1.plot_results()
+
+
+
+# ev1.perform_kfold_cv(ev1.train_X, ev1.train_Y, ev1.get_cnn_model, "CNN", ev1.pes_X, ev1.pes_Y)

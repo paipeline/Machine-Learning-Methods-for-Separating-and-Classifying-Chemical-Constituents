@@ -12,6 +12,15 @@
 
 
 
+# Making documents
+
+1. visualize training validatoin and test
+2. check if the dataset are are well devided
+3. preprocessing - 
+ 3.1
+
+
+
 ---------------------------------
 
 two cnn models, dont know which one to use
