@@ -9,14 +9,13 @@ problems:
 
 
 done:
-    [ ] save preproessing, only test the training part 
+    [X] save preproessing, only test the training part 
     [ ] training and validation error plot
-    [ ] Made h5 files to save models trained weights
     [ ] metrics visualization
-    [ ] ERROR: cannot convert directly from tensor to float custom_loss
+    [X] ERROR: cannot convert directly from tensor to float custom_loss
     [ ] corrected the evaluator.py:
-        [ ] tensor directly to float
-
+        [X] tensor directly to float
+        [ ] size error
 
 
 

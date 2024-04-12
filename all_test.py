@@ -128,11 +128,16 @@ def final_test(model_name):
     pes_X = np.load('./dataset/seperate_test_data/pes/pes_X.npy')
     pes_Y = np.load('./dataset/seperate_test_data/pes/pes_Y.npy')
 
+    print(train_Y)
+    print(test_Y)
+
     dnn_X_train = train_X.reshape(train_X.shape[0], -1)
     dnn_X_pes = pes_X.reshape(pes_X.shape[0], -1)
     dnn_test_x = test_X.reshape(test_X.shape[0], -1)
-    dnn_scaler = StandardScaler()
+    dnn_scaler = StandardScaler()    
     dnn_scaler.fit(dnn_X_train) 
+
+
     dnn_X_train = dnn_scaler.transform(dnn_X_train)
     dnn_X_pes = dnn_scaler.transform(dnn_X_pes)
     dnn_X_test = dnn_scaler.transform(dnn_test_x)

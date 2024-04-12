@@ -382,6 +382,10 @@ class evaluator:
         np.save("./dataset/seperate_test_data/pes/pes_X.npy", pes_X)
         np.save("./dataset/seperate_test_data/pes/pes_Y.npy", pes_Y)
 
+    def _apply_row_proportions(label):
+        row_sums = data.sum(axis=1)
+        return data / row_sums[:, np.newaxis]
+    
 
     def plot_results(self):
         """
