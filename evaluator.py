@@ -1,3 +1,5 @@
+import pandas as pd
+import tf
 from keras.src.activations import relu
 import numpy as np
 import matplotlib.pyplot as plt
@@ -79,21 +81,6 @@ class evaluator:
                 baseline_removal=self.params['baseline_removal']
             )
 
-        self.metrics = {}
-        # Load the data
-        self.train_X = np.load('./dataset/seperate_test_data/pah/pah_train_X.npy')
-        self.train_Y = np.load('./dataset/seperate_test_data/pah/pah_train_Y.npy')
-        self.test_X = np.load('./dataset/seperate_test_data/pah/pah_test_X.npy')
-        self.test_Y = np.load('./dataset/seperate_test_data/pah/pah_test_Y.npy')
-        self.pes_X = np.load('./dataset/seperate_test_data/pes/pes_X.npy')
-        self.pes_Y = np.load('./dataset/seperate_test_data/pes/pes_Y.npy')
-        print('size of train_X:', self.train_X.shape)
-        print('size of train_Y:', self.train_Y.shape)
-        print('size of test_X:', self.test_X.shape)
-        print('size of test_Y:', self.test_Y.shape)
-        print('size of pes_X:', self.pes_X.shape)
-        print('size of pes_Y:', self.pes_Y.shape)
-
 
         # Scale the data
         self.dnn_X_train = self.train_X.reshape(self.train_X.shape[0], -1)
@@ -102,7 +89,7 @@ class evaluator:
 
 
         self.scaler = StandardScaler()
-        self.scaler.fit(self.dnn_X_train) 
+        self.scaler.fit(self.dnn_X_train)
         self.dnn_X_train = self.scaler.transform(self.dnn_X_train)
         self.dnn_X_test = self.scaler.transform(self.dnn_test_x)
 
@@ -119,34 +106,19 @@ class evaluator:
         self.cnn_pes = self.pes_X.reshape(self.pes_X.shape[0], -1)
         # print(np.array(cnn_input_reshape).shape)
         cnn_scalar = StandardScaler()
-        cnn_scalar.fit_transform(self.cnn_input_reshape)
-        cnn_scalar.transform(self.cnn_test_input_reshape)
-        self.cnn_train_input = np.array(self.cnn_input_reshape).reshape(self.train_X.shape)
-        self.cnn_test_input = np.array(np.array(self.cnn_test_input_reshape).reshape(self.test_X.shape))
-        self.cnn_pes_input = np.array(np.array(self.cnn_pes).reshape(self.pes_X.shape))
-        
+        cnn_scalar.fit(self.cnn_input_reshape)
+
+        self.cnn_train_input = np.array(cnn_scalar.fit_transform(self.cnn_input_reshape)).reshape(self.train_X.shape)
+        self.cnn_test_input = np.array(np.array(cnn_scalar.fit_transform(self.cnn_test_input_reshape)).reshape(self.test_X.shape))
+        self.cnn_pes_input = np.array(np.array(cnn_scalar.fit_transform(self.cnn_pes)).reshape(self.pes_X.shape))
 
     def custom_loss(y_true, y_pred):
-        """
-        Custom loss function for ordinal classification that applies a heavier penalty for overestimations.
-        """
-        overestimation_penalty_coefficient = 30.0
-        error = y_pred - y_true
-        squared_error = tf.square(error)
-        
-        # Apply a heavier penalty for overestimations
-        over_penalty_loss = squared_error * overestimation_penalty_coefficient
-        
-        # Use tf.where to apply over_penalty_loss only where the prediction exceeds the true value
-        loss = tf.where(error > 0, over_penalty_loss, squared_error)
-        
-        # Taking the mean across the batch
-        return tf.reduce_mean(loss, axis=-1)
-
-        """ This is not working since it is non-differentiable
-        def custom_activation(x):
-            return backend.round(keras.src.activations.relu(x))
-            """
+        # This is a hyperparameter to be tunned
+        overestimation_penalty_coefficient = 30
+        error = float(y_pred) - float(y_true)
+        loss = backend.square(error)
+        over_penalty_loss = overestimation_penalty_coefficient * loss
+        return backend.mean(backend.switch(error > 0, over_penalty_loss, loss), axis=-1)
 
         """
         Note the following models has been modified to the newest. All changes are determined by manual testing, 
@@ -187,7 +159,7 @@ class evaluator:
         ])
         optimizer = keras.optimizers.Adam(learning_rate=0.0001)
 
-        cnn_model.compile(optimizer=optimizer, loss='mean_absolute_error', metrics=['accuracy'])
+        cnn_model.compile(optimizer=optimizer, loss=evaluator.custom_loss, metrics=['accuracy'])
 
         return cnn_model
 
@@ -265,14 +237,21 @@ class evaluator:
         cnn_test_input = np.array(np.array(cnn_test_input_reshape).reshape(test_X.shape))
         cnn_pes_input = np.array(np.array(cnn_pes).reshape(pes_X.shape))
         
-        model = get_cnn_model(cnn_train_input) if model_name == "CNN" else get_dnn_model(dnn_X_train) if model_name == "DNN" else get_svr_model(dnn_X_train) if model_name == "SVR" else get_rf_model(dnn_X_train)
-        if model_name == "CNN" or model_name == "DNN":
-            model.fit(train_X, train_Y, epochs=50, batch_size=4)
+        model = self.get_cnn_model() if model_name == "CNN" else self.get_dnn_model() if model_name == "DNN" else self.get_svr_model() if model_name == "SVR" else self.get_rf_model()
+        if model_name == "CNN" :
+            model.fit(cnn_train_input, train_Y, epochs=50, batch_size=4)
+            prediction_pah = model.predict(cnn_test_input)
+            prediction_pes = model.predict(cnn_pes_input)
+        elif model_name =="DNN":
+            model.fit(dnn_X_train, train_Y, epochs=50, batch_size=4)
+            prediction_pah = model.predict(dnn_X_test)
+            prediction_pes = model.predict(dnn_X_pes)
         else:
-            model.fit(train_X, train_Y)
+            model.fit(dnn_X_train, train_Y)
+            prediction_pah = model.predict(dnn_X_test)
+            prediction_pes = model.predict(dnn_X_pes)
 
-        prediction_pah = model.predict(test_X)
-        prediction_pes = model.predict(pes_X)
+
         rounded_pah_prediction = np.round(prediction_pah)
         rounded_pes_prediction = np.round(prediction_pes)
         pah_error = np.mean(np.abs(rounded_pah_prediction - test_Y) > 0)
@@ -281,6 +260,7 @@ class evaluator:
         precise_difference_pah_test = np.sum(np.abs(prediction_pah - test_Y))
         precise_difference_pes_test = np.sum(np.abs(prediction_pes - pes_Y))
 
+        metrics = {}
         # load metrics into a dictionary to be used for plotting later
         metrics[model_name] = [pah_error, pes_error, precise_difference_pah_test, precise_difference_pes_test]
         print("**********************************")
@@ -331,8 +311,8 @@ class evaluator:
             err_avg = np.mean(err)
 
             results_df = results_df.append({'Model': model_name, 'MAE': mae_avg, 'MSE': mse_avg, 'R2': r2_avg, 'ErrorRate': err_avg}, ignore_index=True)
-        print_metrics(np.mean(maes), np.mean(mses), model_name, np.mean(r2s), np.mean(err))
-        print_metrics(np.mean(add_maes), np.mean(add_mses), model_name + " - Pesticide", np.mean(add_r2s), np.mean(add_err))
+        self.print_metrics(np.mean(maes), np.mean(mses), model_name, np.mean(r2s), np.mean(err))
+        self.print_metrics(np.mean(add_maes), np.mean(add_mses), model_name + " - Pesticide", np.mean(add_r2s), np.mean(add_err))
 
         return {
             'MAE': maes,
@@ -446,15 +426,20 @@ class evaluator:
 #     'baseline_removal': True,
 #     'preprocessing': True
 # }
-
+#TODO create
 
 # Test models without preprocessing
-ev1 = evaluator(m = 10,windows_size = 1,clustering_threshold = 20,K = 5, maxIt =100,baseline_removal = True,preprocessing = False)
-ev1.final_test("CNN")
-ev1.final_test("DNN")
-ev1.final_test("SVR")
-ev1.final_test("RF")
-ev1.plot_results()
+if __name__ == "__main__":
+    ev1 = evaluator(m=10, windows_size=1, clustering_threshold=20, K=5, maxIt=100, baseline_removal=True,
+                    preprocessing=False)
+    # ev1.create_import_data()
+
+    ev1.final_test("CNN")
+    ev1.final_test("DNN")
+    ev1.final_test("SVR")
+    ev1.final_test("RF")
+    ev1.plot_results()
+
 
 
 

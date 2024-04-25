@@ -153,6 +153,97 @@ class Preprocessor:
 
         return pooled_vectors
 
+    """
+    This part is used for presentation and making figs only
+    """
+
+
+    def outside_repeat(self, file_path: str, m: int, threshold: int, window: int,
+                              max_iterations: int,
+                              increase_rate: float = 0.2) -> Tuple[Dict[int, Dict[str, int]], Dict[str, pd.Series]]:
+
+        raw_x, raw_y = self.load_raw_data(file_path)
+
+        raw_data = [raw_x, raw_y]
+
+        # Slicing data
+        sliced_data = []
+        for yval in raw_data[1].items():
+            for x, y in zip(raw_data[0], yval):
+                # This lower_bound and upper_bound is still not decided
+                lower_bound = 350
+                upper_bound = 2000
+                sliced = [(x, y) for x, y in zip(x, y) if lower_bound <= x <= upper_bound and y != np.nan]
+                # TODO we need to get rid of trash data here
+                sliced_x, sliced_y = zip(*sliced)
+                sliced_data.append([sliced_x, sliced_y])
+        # the above code suppose to be working fine
+
+        # BaseLine removal with ZhangFit
+        baseline_removed_data = []
+        for val in sliced_data:
+            x = val[0]
+            y_val = val[1]
+            baseObj = BaselineRemoval(y_val)
+            baseline_removed_y = baseObj.ZhangFit()
+            baseline_removed_data.append([x, baseline_removed_y])
+        # the above code suppose to be working fine
+
+        # Normalization
+        normalized_vals = []
+        for val in baseline_removed_data:
+            x = val[0]
+            y = val[1]
+
+            normalized_y = (y - min(y)) / (max(y) - min(y))
+            normalized_val = [x, normalized_y]
+            normalized_vals.append(normalized_val)
+
+        # Since we are using a different data representation, we need a different find peek method
+        def internal_find_peak(x, y_vals, m):
+
+            # TODO the rest of this method is not examined, and needs to be modified
+
+            total_peaks = np.zeros_like(x_values)
+            for y_values in y_values_dict.items():
+                peak_indices, _ = find_peaks(y_values, prominence=0.2)
+                binary_peak_vector = np.zeros_like(y_values)
+                binary_peak_vector[peak_indices] = 1
+                total_peaks += binary_peak_vector
+
+            top_peaks = total_peaks.argsort()[::-1][:m]
+            extracted_peaks = np.zeros_like(total_peaks)
+            extracted_peaks[top_peaks] = total_peaks[top_peaks]
+
+            data_with_peaks = {
+                'x': x_values,
+                'y': y_values_dict,
+                'peaks': extracted_peaks
+            }
+            print("raw-window-normalize-*PEAKS")
+            print(" ")
+            return data_with_peaks, top_peaks
+        peak_data, peak_indices = find_peaks(normalized_val[1], normalized_val[0], self.m)
+        data = self.cluster_peaks(peak_data, threshold, peak_indices)
+        m_cluster = len(data['peaks'])
+        m_star = m
+        iterations = 1
+
+        # Iteration till we have equal or more than m clusters, or max_it reaches.
+        while m_cluster < m and iterations < max_iterations:
+            m_star += int(m * increase_rate)  # more PEAKS
+            data, peak_indices = self.raw_data_process(m_star)
+            data = self.cluster_peaks(data, threshold, peak_indices)
+            m_cluster = len(data['peaks'])
+            print("------iter:", iterations, "m star:", m_star, " length cluster:", m_cluster, "-------")
+            iterations += 1
+
+        # Sort the clusters by their count and keep only the top ones
+        sorted_clusters = sorted(data['peaks'].items(), key=lambda x: x[1]['count'], reverse=True)
+        top_clusters = dict(sorted_clusters[:m])
+
+        return top_clusters, data
+
     def increase_m_and_repeat(self, file_path: str, m: int, threshold: int, window: int,
                               max_iterations: int,
                               increase_rate: float = 0.2) -> Tuple[Dict[int, Dict[str, int]], Dict[str, pd.Series]]:

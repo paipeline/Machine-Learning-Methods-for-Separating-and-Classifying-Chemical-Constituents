@@ -8,6 +8,9 @@ from BaselineRemoval import BaselineRemoval
 
 # Since we want 10 different cols, I use 10 different files
 
+
+
+
 raw_data = []
 dir = '../raw_dataset' # change this as needed
 
@@ -90,8 +93,11 @@ plt.tight_layout(rect=[0, 0, 1, 0.98])
 plt.savefig('../fig/Comparison RAW SLICED BASELINE_REMOVED NORMALIZED')
 plt.show()
 
-
-
+for file in os.listdir(dir):
+    for file in files:
+        file_path = os.path.join(dir, file)
+        processor = Preprocessor(file_path,m=10, threshold=20,mat_iteration=100,window=50, prominence=0.02,baseline_removal=True)
+        pre_pro.increase_m_and_repeat(self.file_path, self.m, self.threshold, self.window, self.max_it)
 
 #1. make excel file
 

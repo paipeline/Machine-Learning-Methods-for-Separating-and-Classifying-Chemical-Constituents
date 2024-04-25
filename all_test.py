@@ -1,3 +1,4 @@
+import pandas as pd
 from keras.src.activations import relu
 import numpy as np
 import matplotlib.pyplot as plt
@@ -408,17 +409,6 @@ def run():
 
 
 if __name__ == "__main__":
-    create_import_data(m = 10,windows_size = 1,clustering_threshold = 20,K = 5, maxIt =100)
-    run()
-    create_import_data(m = 10,windows_size = 50,clustering_threshold = 20,K = 5, maxIt =100)
-    run()
-    results_df.to_csv('learning_results_.csv', index=False)
-
-    create_import_data(m = 10,windows_size = 1,clustering_threshold = 20,K = 5, maxIt =100,baseline_removal = True)
-    run()
-    create_import_data(m = 10,windows_size = 50,clustering_threshold = 20,K = 5, maxIt =100,baseline_removal = True)
-    run()
-    results_df.to_csv('learning_results_withBaselineRemoval.csv', index=False)
 
 
 
