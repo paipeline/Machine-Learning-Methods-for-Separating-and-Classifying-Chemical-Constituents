@@ -135,7 +135,6 @@ class Preprocessor:
         """
         mid_points = {}
         pooled_vectors = {}
-
         # For each cluster, compute its middle point, start, and end
         for label, info in cluster_data.items():
             indices = info['indices']
@@ -144,12 +143,21 @@ class Preprocessor:
             mid_points[label] = [mid_point, start, end]
 
         # For each y-value recording, get the maximum value in each cluster
+        # TODO Change the following to make normal functionalities
+        """
         for col, data_recording in data['y'].items():
             pooled_vector = [
                 (mid_points[label][0], max(data_recording[start:end + 1]))
                 for label, (mid_point, start, end) in mid_points.items()
             ]
             pooled_vectors[col] = pooled_vector
+        """
+        for index, data_recording in enumerate(data['y']):
+            pooled_vector = [
+                (mid_points[label][0], max(data_recording[start:end + 1]))
+                for label, (mid_point, start, end) in mid_points.items()
+            ]
+            pooled_vectors[index] = pooled_vector
 
         return pooled_vectors
 
@@ -160,23 +168,28 @@ class Preprocessor:
 
     def outside_repeat(self, file_path: str, m: int, threshold: int, window: int,
                               max_iterations: int,
-                              increase_rate: float = 0.2) -> Tuple[Dict[int, Dict[str, int]], Dict[str, pd.Series]]:
+                              increase_rate: float = 0.2):
 
         raw_x, raw_y = self.load_raw_data(file_path)
 
         raw_data = [raw_x, raw_y]
-
+        raw_x = np.array(raw_x)
         # Slicing data
         sliced_data = []
-        for yval in raw_data[1].items():
-            for x, y in zip(raw_data[0], yval):
+        for yval in raw_y.items():
                 # This lower_bound and upper_bound is still not decided
+                yval = np.array(yval[1])
                 lower_bound = 350
                 upper_bound = 2000
-                sliced = [(x, y) for x, y in zip(x, y) if lower_bound <= x <= upper_bound and y != np.nan]
-                # TODO we need to get rid of trash data here
+
+                sliced = [(x, y) for x, y in zip(raw_x, yval) if lower_bound <= x <= upper_bound]
                 sliced_x, sliced_y = zip(*sliced)
-                sliced_data.append([sliced_x, sliced_y])
+                NAN = False
+                for y_val in sliced_y:
+                    if np.isnan(y_val):
+                        NAN = True
+                if NAN == False:
+                    sliced_data.append([sliced_x, sliced_y])
         # the above code suppose to be working fine
 
         # BaseLine removal with ZhangFit
@@ -200,12 +213,13 @@ class Preprocessor:
             normalized_vals.append(normalized_val)
 
         # Since we are using a different data representation, we need a different find peek method
-        def internal_find_peak(x, y_vals, m):
+        def internal_find_peak(x, data, m):
 
             # TODO the rest of this method is not examined, and needs to be modified
 
-            total_peaks = np.zeros_like(x_values)
-            for y_values in y_values_dict.items():
+            total_peaks = np.zeros_like(x)
+            y_val = [yval for _, yval in data]
+            for y_values in y_val:
                 peak_indices, _ = find_peaks(y_values, prominence=0.2)
                 binary_peak_vector = np.zeros_like(y_values)
                 binary_peak_vector[peak_indices] = 1
@@ -216,14 +230,13 @@ class Preprocessor:
             extracted_peaks[top_peaks] = total_peaks[top_peaks]
 
             data_with_peaks = {
-                'x': x_values,
-                'y': y_values_dict,
+                'x': x,
+                'y': y_val,
                 'peaks': extracted_peaks
             }
-            print("raw-window-normalize-*PEAKS")
-            print(" ")
             return data_with_peaks, top_peaks
-        peak_data, peak_indices = find_peaks(normalized_val[1], normalized_val[0], self.m)
+
+        peak_data, peak_indices = internal_find_peak(normalized_vals[0][0], normalized_vals, m)
         data = self.cluster_peaks(peak_data, threshold, peak_indices)
         m_cluster = len(data['peaks'])
         m_star = m
@@ -232,17 +245,16 @@ class Preprocessor:
         # Iteration till we have equal or more than m clusters, or max_it reaches.
         while m_cluster < m and iterations < max_iterations:
             m_star += int(m * increase_rate)  # more PEAKS
-            data, peak_indices = self.raw_data_process(m_star)
-            data = self.cluster_peaks(data, threshold, peak_indices)
+            peak_data, peak_indices = internal_find_peak(normalized_vals[0][0], normalized_vals, m_star)
+            data = self.cluster_peaks(peak_data, threshold, peak_indices)
             m_cluster = len(data['peaks'])
-            print("------iter:", iterations, "m star:", m_star, " length cluster:", m_cluster, "-------")
             iterations += 1
 
         # Sort the clusters by their count and keep only the top ones
         sorted_clusters = sorted(data['peaks'].items(), key=lambda x: x[1]['count'], reverse=True)
         top_clusters = dict(sorted_clusters[:m])
 
-        return top_clusters, data
+        return raw_data, sliced_data, baseline_removed_data, normalized_vals, top_clusters, data, self.max_pool(data=data,cluster_data=top_clusters)
 
     def increase_m_and_repeat(self, file_path: str, m: int, threshold: int, window: int,
                               max_iterations: int,
